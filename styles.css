@@ -1637,6 +1637,7 @@ body {
         font-size: 1rem;
         margin-bottom: var(--spacing-sm);
         padding: 0 var(--spacing-xs);
+        max-width: 40%;
     }
     
     .section {
