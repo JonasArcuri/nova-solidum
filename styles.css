@@ -360,6 +360,15 @@ body {
     margin-bottom: var(--spacing-xs);
     color: var(--color-navy);
     font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.crypto-icon img {
+    width: 2.5rem;
+    height: 2.5rem;
+    object-fit: contain;
 }
 
 .crypto-name {
@@ -777,14 +786,14 @@ body {
 
 .audience-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: var(--spacing-md);
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--spacing-xl);
     margin-top: var(--spacing-lg);
 }
 
 .audience-card {
     background: linear-gradient(135deg, var(--color-gray-light) 0%, var(--color-white) 100%);
-    padding: var(--spacing-lg);
+    padding: var(--spacing-xl);
     border-radius: var(--radius-lg);
     border-top: 4px solid var(--color-red);
     box-shadow: var(--shadow-md);
@@ -802,26 +811,49 @@ body {
     font-size: 1.75rem;
     font-weight: 600;
     color: var(--color-navy);
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 2px solid var(--color-gray-light);
 }
 
 .audience-list {
     list-style: none;
     color: var(--color-gray-dark);
-    line-height: 2;
+    line-height: 1.8;
+    padding: 0;
+    margin: 0;
 }
 
 .audience-list li {
-    padding-left: var(--spacing-md);
+    padding: var(--spacing-sm) 0 var(--spacing-sm) var(--spacing-lg);
     position: relative;
+    margin-bottom: var(--spacing-xs);
+    font-size: 0.95rem;
+    transition: var(--transition);
+}
+
+.audience-list li:hover {
+    color: var(--color-navy);
+    padding-left: calc(var(--spacing-lg) + 4px);
 }
 
 .audience-list li::before {
-    content: '→';
+    content: '';
     position: absolute;
     left: 0;
-    color: var(--color-red);
-    font-weight: bold;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 6px;
+    background: var(--color-red);
+    border-radius: 50%;
+    transition: var(--transition);
+}
+
+.audience-list li:hover::before {
+    width: 8px;
+    height: 8px;
+    background: var(--color-navy);
 }
 
 /* Ecosystem Section */
@@ -1185,7 +1217,7 @@ body {
 
 .footer-content {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
     flex-wrap: wrap;
     gap: var(--spacing-sm);
@@ -1194,6 +1226,8 @@ body {
 .footer-logo {
     display: flex;
     align-items: center;
+    justify-content: center;
+    padding-top: 2rem;
     gap: var(--spacing-sm);
 }
 
@@ -1263,6 +1297,11 @@ body {
     
     .crypto-icon {
         font-size: 2.25rem;
+    }
+    
+    .crypto-icon img {
+        width: 2.25rem;
+        height: 2.25rem;
     }
     
     .price-amount {
@@ -1411,6 +1450,11 @@ body {
     
     .crypto-icon {
         font-size: 2rem;
+    }
+    
+    .crypto-icon img {
+        width: 2rem;
+        height: 2rem;
     }
     
     .crypto-name {
@@ -1693,6 +1737,11 @@ body {
         margin-bottom: 0.25rem;
     }
     
+    .crypto-icon img {
+        width: 1.75rem;
+        height: 1.75rem;
+    }
+    
     .crypto-name {
         font-size: 0.75rem;
         margin-bottom: 0.125rem;
@@ -1727,7 +1776,7 @@ body {
     .audience-card,
     .ecosystem-card,
     .differentiator-card {
-        padding: var(--spacing-sm);
+        padding: var(--spacing-md);
     }
     
     .mvv-title,
@@ -1735,6 +1784,7 @@ body {
     .ecosystem-title,
     .differentiator-title {
         font-size: 1.25rem;
+        margin-bottom: var(--spacing-sm);
     }
     
     .mvv-description,
@@ -1742,6 +1792,11 @@ body {
     .ecosystem-description,
     .differentiator-description {
         font-size: 0.9rem;
+    }
+    
+    .audience-list li {
+        padding: var(--spacing-xs) 0 var(--spacing-xs) var(--spacing-md);
+        margin-bottom: var(--spacing-xs);
     }
     
     .about-text,
@@ -1872,7 +1927,13 @@ body {
     .values-list,
     .audience-list,
     .phase-list {
-        padding-left: var(--spacing-sm);
+        padding-left: 0;
+    }
+    
+    .audience-list li {
+        padding-left: var(--spacing-md);
+        font-size: 0.85rem;
+        line-height: 1.6;
     }
 }
 
@@ -1898,6 +1959,11 @@ body {
     
     .crypto-icon {
         font-size: 1.5rem;
+    }
+    
+    .crypto-icon img {
+        width: 1.5rem;
+        height: 1.5rem;
     }
     
     .price-amount {
