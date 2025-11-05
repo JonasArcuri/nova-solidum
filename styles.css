@@ -1859,10 +1859,10 @@ body {
     }
     
     .hero-subtitle {
-        font-size: 1rem;
+        font-size: 0.9rem;
         margin-bottom: var(--spacing-sm);
         padding: 0 var(--spacing-xs);
-        max-width: 40%;
+        max-width: 30%;
     }
     
     .section {
@@ -1889,7 +1889,7 @@ body {
     }
     
     .btn-primary {
-        padding: 0.625rem 1.25rem;
+        padding: 0.600rem 1.10rem;
         font-size: 0.875rem;
     }
     
@@ -2090,7 +2090,7 @@ body {
     }
     
     .logo-img {
-        height: 75px;
+        height: 85px;
     }
     
     .nav-menu {
@@ -2112,8 +2112,8 @@ body {
     
     /* Improve touch targets on mobile */
     .btn-primary {
-        min-height: 44px;
-        min-width: 120px;
+        min-height: 35px;
+        min-width: 100px;
     }
     
     .nav-menu a {
@@ -2170,7 +2170,8 @@ body {
     }
     
     .hero-subtitle {
-        font-size: 0.9rem;
+        font-size: 0.6rem;
+        max-width: 20%;
     }
     
     .section-title {
