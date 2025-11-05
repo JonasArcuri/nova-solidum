@@ -1232,6 +1232,10 @@ body {
     gap: var(--spacing-sm);
 }
 
+.footer-logo img {
+    border-radius: 10px 10px 10px 10px;
+}
+
 .footer-logo .logo-img {
     height: 125px;
     width: auto;
