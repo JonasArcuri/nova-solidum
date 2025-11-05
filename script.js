@@ -139,17 +139,20 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// EmailJS Configuration - SIMPLES
+// EmailJS Configuration
 // 1. Acesse https://www.emailjs.com/ e crie uma conta (gratuito até 200 emails/mês)
 // 2. Configure um serviço de email (Gmail, Outlook, etc.)
-// 3. Crie UM template de email com estas variáveis: {{user_name}}, {{user_email}}, {{transaction_objective}}
-// 4. Configure o template para enviar para: novasolidum@gmail.com
-// 5. Copie o Service ID, Template ID e Public Key e cole abaixo
+// 3. Crie DOIS templates de email:
+//    - Template 1: Para a empresa (novasolidum@gmail.com) com variáveis: {{user_name}}, {{user_email}}, {{user_phone}}, {{transaction_objective}}
+//    - Template 2: Confirmação para o usuário com variáveis: {{user_name}}
+// 4. Copie os Template IDs e cole abaixo
+// 5. Copie o Service ID e Public Key e cole abaixo
 
 const EMAILJS_CONFIG = {
-    serviceID: 'YOUR_SERVICE_ID',  // Cole aqui o Service ID
-    templateID: 'YOUR_TEMPLATE_ID', // Cole aqui o Template ID
-    publicKey: 'YOUR_PUBLIC_KEY'     // Cole aqui a Public Key
+    serviceID: 'service_pwkak2r',           // Cole aqui o Service ID
+    templateIDCompany: 'template_5pxvv6e',  // Cole aqui o Template ID para a empresa
+    templateIDUser: 'template_khtoh8k', // Cole aqui o Template ID para confirmação do usuário
+    publicKey: 'Caq5-K4DTuFAhXvkQ'          // Cole aqui a Public Key
 };
 
 // Initialize EmailJS when available
@@ -186,6 +189,7 @@ if (registerForm) {
         
         const userEmail = document.getElementById('userEmail').value;
         const fullName = document.getElementById('fullName').value;
+        const userPhone = document.getElementById('userPhone').value;
         const transactionObjective = document.getElementById('transactionObjective').value;
         
         // Show loading message
@@ -198,7 +202,8 @@ if (registerForm) {
         
         // Check if EmailJS is configured
         if (EMAILJS_CONFIG.serviceID === 'YOUR_SERVICE_ID' || 
-            EMAILJS_CONFIG.templateID === 'YOUR_TEMPLATE_ID' || 
+            EMAILJS_CONFIG.templateIDCompany === 'YOUR_TEMPLATE_ID' || 
+            EMAILJS_CONFIG.templateIDUser === 'template_user_confirm' ||
             EMAILJS_CONFIG.publicKey === 'YOUR_PUBLIC_KEY') {
             showMessage('EmailJS não configurado. Por favor, configure as credenciais no arquivo script.js ou entre em contato diretamente: novasolidum@gmail.com', 'error');
             submitBtn.disabled = false;
@@ -215,27 +220,43 @@ if (registerForm) {
         }
         
         try {
-            // Template parameters for EmailJS - Email to Nova Solidum
-            const templateParams = {
+            // Template parameters for EmailJS - Email to Nova Solidum (empresa)
+            const companyTemplateParams = {
                 to_email: 'novasolidum@gmail.com',
                 from_email: userEmail,
                 from_name: fullName,
                 user_email: userEmail,
                 user_name: fullName,
+                user_phone: userPhone,
                 transaction_objective: transactionObjective,
                 reply_to: userEmail,
                 subject: 'Novo Registro - Nova Solidum Finances'
             };
             
-            // Send email to Nova Solidum
+            // Template parameters for EmailJS - Confirmation email to user
+            const userTemplateParams = {
+                to_email: userEmail,
+                to_name: fullName,
+                user_name: fullName,
+                subject: 'Registro Confirmado - Nova Solidum Finances'
+            };
+            
+            // Send email to Nova Solidum (empresa)
             await emailjs.send(
                 EMAILJS_CONFIG.serviceID,
-                EMAILJS_CONFIG.templateID,
-                templateParams
+                EMAILJS_CONFIG.templateIDCompany,
+                companyTemplateParams
+            );
+            
+            // Send confirmation email to user
+            await emailjs.send(
+                EMAILJS_CONFIG.serviceID,
+                EMAILJS_CONFIG.templateIDUser,
+                userTemplateParams
             );
             
             // Show success message
-            showMessage('Formulário enviado com sucesso! Entraremos em contato em breve.', 'success');
+            showMessage('Formulário enviado com sucesso! Verifique seu email para confirmação. Entraremos em contato em breve.', 'success');
             
             // Reset form after 3 seconds
             setTimeout(() => {
