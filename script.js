@@ -77,14 +77,189 @@ document.querySelectorAll('.feature-card, .mvv-card, .audience-card, .ecosystem-
     observer.observe(el);
 });
 
-// Button click handlers
+// Modal functionality
+const registerModal = document.getElementById('registerModal');
+const registerForm = document.getElementById('registerForm');
+const modalClose = document.querySelector('.modal-close');
+const cancelBtn = document.getElementById('cancelBtn');
+const formMessage = document.getElementById('formMessage');
+
+// Function to open modal
+function openModal() {
+    if (registerModal) {
+        registerModal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+// Function to close modal
+function closeModal() {
+    if (registerModal) {
+        registerModal.classList.remove('show');
+        document.body.style.overflow = '';
+        registerForm.reset();
+        formMessage.classList.remove('show', 'success', 'error', 'loading');
+        formMessage.textContent = '';
+    }
+}
+
+// Button click handlers - open modal
 document.querySelectorAll('.btn-primary').forEach(button => {
     button.addEventListener('click', (e) => {
-        // You can add your logic here for login/register
-        console.log('Button clicked:', e.target.textContent);
-        // Example: window.location.href = '/login';
+        // Check if button is not the submit button inside the form
+        if (!button.closest('.register-form')) {
+            e.preventDefault();
+            openModal();
+        }
     });
 });
+
+// Close modal events
+if (modalClose) {
+    modalClose.addEventListener('click', closeModal);
+}
+
+if (cancelBtn) {
+    cancelBtn.addEventListener('click', closeModal);
+}
+
+// Close modal when clicking outside
+if (registerModal) {
+    registerModal.addEventListener('click', (e) => {
+        if (e.target === registerModal) {
+            closeModal();
+        }
+    });
+}
+
+// Close modal with ESC key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && registerModal && registerModal.classList.contains('show')) {
+        closeModal();
+    }
+});
+
+// EmailJS Configuration - SIMPLES
+// 1. Acesse https://www.emailjs.com/ e crie uma conta (gratuito até 200 emails/mês)
+// 2. Configure um serviço de email (Gmail, Outlook, etc.)
+// 3. Crie UM template de email com estas variáveis: {{user_name}}, {{user_email}}, {{transaction_objective}}
+// 4. Configure o template para enviar para: novasolidum@gmail.com
+// 5. Copie o Service ID, Template ID e Public Key e cole abaixo
+
+const EMAILJS_CONFIG = {
+    serviceID: 'YOUR_SERVICE_ID',  // Cole aqui o Service ID
+    templateID: 'YOUR_TEMPLATE_ID', // Cole aqui o Template ID
+    publicKey: 'YOUR_PUBLIC_KEY'     // Cole aqui a Public Key
+};
+
+// Initialize EmailJS when available
+function initEmailJS() {
+    if (typeof emailjs !== 'undefined') {
+        try {
+            emailjs.init(EMAILJS_CONFIG.publicKey);
+        } catch (error) {
+            console.error('EmailJS initialization error:', error);
+        }
+    }
+}
+
+// Wait for EmailJS to load
+if (typeof emailjs === 'undefined') {
+    window.addEventListener('load', initEmailJS);
+} else {
+    initEmailJS();
+}
+
+// Function to show message
+function showMessage(message, type) {
+    formMessage.textContent = message;
+    formMessage.className = `form-message show ${type}`;
+    
+    // Scroll to message
+    formMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// Form submission handler
+if (registerForm) {
+    registerForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const userEmail = document.getElementById('userEmail').value;
+        const fullName = document.getElementById('fullName').value;
+        const transactionObjective = document.getElementById('transactionObjective').value;
+        
+        // Show loading message
+        showMessage('Enviando formulário...', 'loading');
+        
+        // Disable submit button
+        const submitBtn = registerForm.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Enviando...';
+        
+        // Check if EmailJS is configured
+        if (EMAILJS_CONFIG.serviceID === 'YOUR_SERVICE_ID' || 
+            EMAILJS_CONFIG.templateID === 'YOUR_TEMPLATE_ID' || 
+            EMAILJS_CONFIG.publicKey === 'YOUR_PUBLIC_KEY') {
+            showMessage('EmailJS não configurado. Por favor, configure as credenciais no arquivo script.js ou entre em contato diretamente: novasolidum@gmail.com', 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Enviar';
+            return;
+        }
+        
+        // Check if EmailJS is available
+        if (typeof emailjs === 'undefined') {
+            showMessage('Serviço de email não disponível. Por favor, entre em contato diretamente: novasolidum@gmail.com', 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Enviar';
+            return;
+        }
+        
+        try {
+            // Template parameters for EmailJS - Email to Nova Solidum
+            const templateParams = {
+                to_email: 'novasolidum@gmail.com',
+                from_email: userEmail,
+                from_name: fullName,
+                user_email: userEmail,
+                user_name: fullName,
+                transaction_objective: transactionObjective,
+                reply_to: userEmail,
+                subject: 'Novo Registro - Nova Solidum Finances'
+            };
+            
+            // Send email to Nova Solidum
+            await emailjs.send(
+                EMAILJS_CONFIG.serviceID,
+                EMAILJS_CONFIG.templateID,
+                templateParams
+            );
+            
+            // Show success message
+            showMessage('Formulário enviado com sucesso! Entraremos em contato em breve.', 'success');
+            
+            // Reset form after 3 seconds
+            setTimeout(() => {
+                registerForm.reset();
+                closeModal();
+            }, 3000);
+            
+        } catch (error) {
+            console.error('EmailJS Error:', error);
+            let errorMessage = 'Erro ao enviar formulário. ';
+            
+            if (error.text) {
+                errorMessage += `Detalhes: ${error.text}. `;
+            }
+            
+            errorMessage += 'Por favor, tente novamente ou entre em contato diretamente pelo email novasolidum@gmail.com';
+            showMessage(errorMessage, 'error');
+        } finally {
+            // Re-enable submit button
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Enviar';
+        }
+    });
+}
 
 // Crypto Price API Integration
 // Coin mapping for different APIs

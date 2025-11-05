@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="shortcut icon" href="assets/logo.svg" type="image/x-icon">
+    <link rel="shortcut icon" href="assets/Nova-Solidum.png" type="image/png">
     <link
         href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
@@ -20,7 +20,7 @@
         <nav class="nav">
             <div class="nav-container">
                 <div class="logo">
-                    <img src="assets/logo.svg" alt="Nova Solidum Finances" class="logo-img">
+                    <img src="assets/Nova-Solidum.png" alt="Nova Solidum Finances" class="logo-img">
                     <span class="logo-text">Nova Solidum</span>
                 </div>
                 <ul class="nav-menu">
@@ -460,12 +460,47 @@
                     de registro da CVM, uma vez que não se trata de operações/serviços com valores mobiliários".</p>
             </div>
             <div class="footer-logo">
-                <img src="assets/logo.svg" alt="Nova Solidum Finances" class="logo-img">
+                <img src="assets/Nova-Solidum.png" alt="Nova Solidum Finances" class="logo-img">
                 <span class="logo-text">Nova Solidum</span>
             </div>
         </div>
     </footer>
 
+    <!-- Modal de Registro -->
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <div class="modal-header">
+                <h2 class="modal-title">Registro na Nova Solidum</h2>
+                <p class="modal-subtitle">Preencha os dados abaixo para começar</p>
+            </div>
+            <form id="registerForm" class="register-form">
+                <div class="form-group">
+                    <label for="userEmail">Email *</label>
+                    <input type="email" id="userEmail" name="userEmail" required 
+                           placeholder="seu@email.com">
+                </div>
+                <div class="form-group">
+                    <label for="fullName">Nome Completo *</label>
+                    <input type="text" id="fullName" name="fullName" required 
+                           placeholder="Seu nome completo">
+                </div>
+                <div class="form-group">
+                    <label for="transactionObjective">Objetivo da Transação *</label>
+                    <textarea id="transactionObjective" name="transactionObjective" required 
+                              rows="4" placeholder="Descreva o objetivo da transação, por exemplo: comprar cripto para investimento de longo prazo, proteção cambial, etc."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="cancelBtn">Cancelar</button>
+                    <button type="submit" class="btn-primary">Enviar</button>
+                </div>
+                <div id="formMessage" class="form-message"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- EmailJS SDK -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script src="script.js"></script>
 </body>
 
