@@ -31,6 +31,17 @@ nova-solidum/
 1. Abra o arquivo `index.html` em um navegador web moderno
 2. Ou hospede os arquivos em um servidor web
 
+### Testando o Formulário
+
+Para testar o formulário de registro KYC:
+1. Clique no botão "Começar" no header
+2. Selecione entre Pessoa Física (PF) ou Pessoa Jurídica (PJ)
+3. Preencha os campos obrigatórios
+4. Teste as validações (CPF, CNPJ, CEP, etc.)
+5. Faça upload dos documentos necessários
+
+**📋 Veja o guia completo de testes em:** `GUIA_TESTE.md`
+
 ## Funcionalidades
 
 - Design responsivo (mobile, tablet, desktop)
@@ -38,6 +49,12 @@ nova-solidum/
 - Scroll suave entre seções
 - Animações de entrada para elementos
 - Menu mobile com toggle
+- **Formulário KYC completo** com validações:
+  - Cadastro para Pessoa Física (PF) e Pessoa Jurídica (PJ)
+  - Validação de CPF/CNPJ com dígito verificador
+  - Integração com ViaCEP para preenchimento automático de endereço
+  - Upload de documentos com validação de tipo e tamanho
+  - Envio de dados via EmailJS
 
 ## Seções da Landing Page
 
@@ -51,7 +68,17 @@ nova-solidum/
 - HTML5
 - CSS3 (com variáveis CSS e Grid/Flexbox)
 - JavaScript (vanilla)
-- SVG para logo
+- EmailJS para envio de formulários
+- API ViaCEP para consulta de CEP
+- SVG/PNG para logo
+
+## Arquivos Importantes
+
+- `index.html` - Página principal com formulário KYC
+- `script.js` - Validações e lógica do formulário
+- `styles.css` - Estilos e responsividade
+- `GUIA_TESTE.md` - Guia completo de testes
+- `INSTRUCOES_EMAILJS.md` - Instruções para configurar EmailJS
 
 ---
 

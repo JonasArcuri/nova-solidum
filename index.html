@@ -467,33 +467,310 @@
 
     <!-- Modal de Registro -->
     <div id="registerModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content modal-content-large">
             <span class="modal-close">&times;</span>
             <div class="modal-header">
                 <h2 class="modal-title">Registro na Nova Solidum</h2>
                 <p class="modal-subtitle">Preencha os dados abaixo para começar</p>
             </div>
             <form id="registerForm" class="register-form">
-                <div class="form-group">
-                    <label for="userEmail">Email *</label>
-                    <input type="email" id="userEmail" name="userEmail" required 
-                           placeholder="seu@email.com">
+                <!-- Tipo de Cadastro -->
+                <div class="form-section">
+                    <h3 class="form-section-title">Tipo de Cadastro *</h3>
+                    <div class="form-radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="accountType" value="PF" required checked>
+                            <span>Pessoa Física (PF)</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="accountType" value="PJ" required>
+                            <span>Pessoa Jurídica (PJ)</span>
+                        </label>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="fullName">Nome Completo *</label>
-                    <input type="text" id="fullName" name="fullName" required 
-                           placeholder="Seu nome completo">
+
+                <!-- Formulário Pessoa Física -->
+                <div id="pfForm" class="form-type-section">
+                    <h3 class="form-section-title">Dados Básicos - Pessoa Física</h3>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="fullName">Nome Completo *</label>
+                            <input type="text" id="fullName" name="fullName" required placeholder="Nome completo">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="cpf">CPF *</label>
+                            <input type="text" id="cpf" name="cpf" required placeholder="000.000.000-00" maxlength="14">
+                        </div>
+                        <div class="form-group">
+                            <label for="birthDate">Data de Nascimento *</label>
+                            <input type="date" id="birthDate" name="birthDate" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="rg">RG</label>
+                            <input type="text" id="rg" name="rg" placeholder="00.000.000-0">
+                        </div>
+                        <div class="form-group">
+                            <label for="cnh">CNH</label>
+                            <input type="text" id="cnh" name="cnh" placeholder="00000000000">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="motherName">Nome da Mãe *</label>
+                        <input type="text" id="motherName" name="motherName" required placeholder="Nome completo da mãe">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="userEmail">Email *</label>
+                            <input type="email" id="userEmail" name="userEmail" required placeholder="seu@email.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="userPhone">Telefone *</label>
+                            <input type="tel" id="userPhone" name="userPhone" required placeholder="+5511999999999" pattern="^\+55\d{10,11}$">
+                            <small class="form-hint">Formato: +5511999999999</small>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="pepStatus" name="pepStatus">
+                            <span>Sou Pessoa Exposta Politicamente (PEP) *</span>
+                        </label>
+                    </div>
+                    <div class="form-group" id="pepDetailsGroup" style="display: none;">
+                        <label for="pepPosition">Cargo/Função *</label>
+                        <input type="text" id="pepPosition" name="pepPosition" placeholder="Ex: Deputado, Prefeito, etc.">
+                    </div>
+
+                    <h3 class="form-section-title">Endereço</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="cep">CEP *</label>
+                            <input type="text" id="cep" name="cep" required placeholder="00000-000" maxlength="9">
+                        </div>
+                        <div class="form-group">
+                            <label for="street">Logradouro *</label>
+                            <input type="text" id="street" name="street" required placeholder="Rua, Avenida, etc.">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="number">Número *</label>
+                            <input type="text" id="number" name="number" required placeholder="123">
+                        </div>
+                        <div class="form-group">
+                            <label for="complement">Complemento</label>
+                            <input type="text" id="complement" name="complement" placeholder="Apto, Bloco, etc.">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="district">Bairro *</label>
+                            <input type="text" id="district" name="district" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="city">Cidade *</label>
+                            <input type="text" id="city" name="city" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="state">UF *</label>
+                            <input type="text" id="state" name="state" required maxlength="2" placeholder="SP">
+                        </div>
+                    </div>
+
+                    <h3 class="form-section-title">Documentos (Upload)</h3>
+                    <div class="form-group">
+                        <label for="documentFront">RG/CNH - Frente *</label>
+                        <input type="file" id="documentFront" name="documentFront" accept="image/jpeg,image/png,application/pdf" required>
+                        <small class="form-hint">JPG, PNG ou PDF (máx. 10MB para upload, até 10KB será enviado por email)</small>
+                        <small class="file-size-warning" style="display: none; color: #dc2626; font-weight: 600;"></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="documentBack">RG/CNH - Verso *</label>
+                        <input type="file" id="documentBack" name="documentBack" accept="image/jpeg,image/png,application/pdf" required>
+                        <small class="form-hint">JPG, PNG ou PDF (máx. 10MB para upload, até 10KB será enviado por email)</small>
+                        <small class="file-size-warning" style="display: none; color: #dc2626; font-weight: 600;"></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="selfie">Selfie (Opcional)</label>
+                        <input type="file" id="selfie" name="selfie" accept="image/jpeg,image/png">
+                        <small class="form-hint">Melhora a segurança antifraude (até 10KB será enviado por email)</small>
+                        <small class="file-size-warning" style="display: none; color: #dc2626; font-weight: 600;"></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="proofOfAddress">Comprovante de Endereço *</label>
+                        <input type="file" id="proofOfAddress" name="proofOfAddress" accept="image/jpeg,image/png,application/pdf" required>
+                        <small class="form-hint">Conta de consumo até 90 dias (máx. 10MB para upload, até 10KB será enviado por email)</small>
+                        <small class="file-size-warning" style="display: none; color: #dc2626; font-weight: 600;"></small>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="userPhone">Telefone *</label>
-                    <input type="tel" id="userPhone" name="userPhone" required 
-                           placeholder="(00) 00000-0000">
+
+                <!-- Formulário Pessoa Jurídica -->
+                <div id="pjForm" class="form-type-section" style="display: none;">
+                    <h3 class="form-section-title">Dados da Empresa</h3>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="companyName">Razão Social *</label>
+                            <input type="text" id="companyName" name="companyName" required placeholder="Razão Social">
+                        </div>
+                        <div class="form-group">
+                            <label for="tradeName">Nome Fantasia *</label>
+                            <input type="text" id="tradeName" name="tradeName" required placeholder="Nome Fantasia">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="cnpj">CNPJ *</label>
+                            <input type="text" id="cnpj" name="cnpj" required placeholder="00.000.000/0000-00" maxlength="18">
+                        </div>
+                        <div class="form-group">
+                            <label for="foundationDate">Data de Fundação *</label>
+                            <input type="date" id="foundationDate" name="foundationDate" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="mainCNAE">CNAE Principal *</label>
+                        <input type="text" id="mainCNAE" name="mainCNAE" required placeholder="0000-0/00">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="companyEmail">Email da Empresa *</label>
+                            <input type="email" id="companyEmail" name="companyEmail" required placeholder="empresa@email.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="companyPhone">Telefone da Empresa *</label>
+                            <input type="tel" id="companyPhone" name="companyPhone" required placeholder="+5511999999999" pattern="^\+55\d{10,11}$">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="legalNature">Natureza Jurídica (Opcional)</label>
+                        <input type="text" id="legalNature" name="legalNature" placeholder="Ex: Sociedade Limitada">
+                    </div>
+
+                    <h3 class="form-section-title">Endereço Fiscal</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="pjCep">CEP *</label>
+                            <input type="text" id="pjCep" name="pjCep" required placeholder="00000-000" maxlength="9">
+                        </div>
+                        <div class="form-group">
+                            <label for="pjStreet">Logradouro *</label>
+                            <input type="text" id="pjStreet" name="pjStreet" required placeholder="Rua, Avenida, etc.">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="pjNumber">Número *</label>
+                            <input type="text" id="pjNumber" name="pjNumber" required placeholder="123">
+                        </div>
+                        <div class="form-group">
+                            <label for="pjComplement">Complemento</label>
+                            <input type="text" id="pjComplement" name="pjComplement" placeholder="Sala, Andar, etc.">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="pjDistrict">Bairro *</label>
+                            <input type="text" id="pjDistrict" name="pjDistrict" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="pjCity">Cidade *</label>
+                            <input type="text" id="pjCity" name="pjCity" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="pjState">UF *</label>
+                            <input type="text" id="pjState" name="pjState" required maxlength="2" placeholder="SP">
+                        </div>
+                    </div>
+
+                    <h3 class="form-section-title">Administrador/Representante Legal</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="majorityAdminName">Nome Completo *</label>
+                            <input type="text" id="majorityAdminName" name="majorityAdminName" required placeholder="Nome do administrador">
+                        </div>
+                        <div class="form-group">
+                            <label for="majorityAdminCpf">CPF *</label>
+                            <input type="text" id="majorityAdminCpf" name="majorityAdminCpf" required placeholder="000.000.000-00" maxlength="14">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="majorityAdminEmail">Email *</label>
+                            <input type="email" id="majorityAdminEmail" name="majorityAdminEmail" required placeholder="admin@email.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="majorityAdminPhone">Telefone *</label>
+                            <input type="tel" id="majorityAdminPhone" name="majorityAdminPhone" required placeholder="+5511999999999" pattern="^\+55\d{10,11}$">
+                        </div>
+                    </div>
+
+                    <h3 class="form-section-title">Documentos da Empresa (Upload)</h3>
+                    <div class="form-group">
+                        <label for="articlesOfAssociation">Contrato Social/Alterações *</label>
+                        <input type="file" id="articlesOfAssociation" name="articlesOfAssociation" accept="application/pdf" required>
+                        <small class="form-hint">PDF (máx. 10MB para upload, até 10KB será enviado por email)</small>
+                        <small class="file-size-warning" style="display: none; color: #dc2626; font-weight: 600;"></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="cnpjCard">Comprovante CNPJ *</label>
+                        <input type="file" id="cnpjCard" name="cnpjCard" accept="image/jpeg,image/png,application/pdf" required>
+                        <small class="form-hint">JPG, PNG ou PDF (máx. 10MB para upload, até 10KB será enviado por email)</small>
+                        <small class="file-size-warning" style="display: none; color: #dc2626; font-weight: 600;"></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="adminIdFront">RG/CNH Administrador - Frente *</label>
+                        <input type="file" id="adminIdFront" name="adminIdFront" accept="image/jpeg,image/png,application/pdf" required>
+                        <small class="form-hint">JPG, PNG ou PDF (máx. 10MB para upload, até 10KB será enviado por email)</small>
+                        <small class="file-size-warning" style="display: none; color: #dc2626; font-weight: 600;"></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="adminIdBack">RG/CNH Administrador - Verso *</label>
+                        <input type="file" id="adminIdBack" name="adminIdBack" accept="image/jpeg,image/png,application/pdf" required>
+                        <small class="form-hint">JPG, PNG ou PDF (máx. 10MB para upload, até 10KB será enviado por email)</small>
+                        <small class="file-size-warning" style="display: none; color: #dc2626; font-weight: 600;"></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="companyProofOfAddress">Comprovante de Endereço da Empresa *</label>
+                        <input type="file" id="companyProofOfAddress" name="companyProofOfAddress" accept="image/jpeg,image/png,application/pdf" required>
+                        <small class="form-hint">JPG, PNG ou PDF (máx. 10MB para upload, até 10KB será enviado por email)</small>
+                        <small class="file-size-warning" style="display: none; color: #dc2626; font-weight: 600;"></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="ecnpjCertificate">Certificado e-CNPJ (Opcional)</label>
+                        <input type="file" id="ecnpjCertificate" name="ecnpjCertificate" accept=".pfx">
+                        <small class="form-hint">Arquivo .pfx para assinatura de NF/boletos</small>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="transactionObjective">Objetivo da Transação *</label>
-                    <textarea id="transactionObjective" name="transactionObjective" required 
-                              rows="4" placeholder="Descreva o objetivo da transação, por exemplo: comprar cripto para investimento de longo prazo, proteção cambial, etc."></textarea>
+
+                <!-- Termos e Privacidade -->
+                <div class="form-section">
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="acceptTerms" name="acceptTerms" required>
+                            <span>Li e aceito os <a href="#" target="_blank">Termos de Uso</a> e <a href="#" target="_blank">Política de Privacidade</a> *</span>
+                        </label>
+                    </div>
                 </div>
+
                 <div class="form-actions">
                     <button type="button" class="btn-secondary" id="cancelBtn">Cancelar</button>
                     <button type="submit" class="btn-primary">Enviar</button>

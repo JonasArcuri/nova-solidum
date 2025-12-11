@@ -1286,6 +1286,10 @@ body {
     animation: slideDown 0.3s ease;
 }
 
+.modal-content-large {
+    max-width: 900px;
+}
+
 .modal-close {
     position: absolute;
     right: var(--spacing-md);
@@ -1370,6 +1374,127 @@ body {
 .form-group textarea {
     resize: vertical;
     min-height: 100px;
+}
+
+.form-group input[type="file"] {
+    padding: var(--spacing-xs);
+    border: 2px dashed var(--color-gray-light);
+    background-color: var(--color-gray-lighter);
+    cursor: pointer;
+}
+
+.form-group input[type="file"]:hover {
+    border-color: var(--color-red);
+    background-color: var(--color-gray-light);
+}
+
+.form-group input[type="file"]:focus {
+    border-color: var(--color-red);
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+.form-hint {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.85rem;
+    color: var(--color-gray);
+    font-style: italic;
+}
+
+.form-section {
+    margin-bottom: var(--spacing-xl);
+    padding-bottom: var(--spacing-lg);
+    border-bottom: 2px solid var(--color-gray-light);
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+}
+
+.form-section-title {
+    font-family: var(--font-serif);
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-navy);
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-xs);
+    border-bottom: 2px solid var(--color-red);
+}
+
+.form-type-section {
+    margin-top: var(--spacing-lg);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+}
+
+.form-radio-group {
+    display: flex;
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-sm);
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--color-navy);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 2px solid var(--color-gray-light);
+    border-radius: var(--radius-md);
+    transition: var(--transition);
+}
+
+.radio-label:hover {
+    border-color: var(--color-red);
+    background-color: var(--color-gray-lighter);
+}
+
+.radio-label input[type="radio"] {
+    width: auto;
+    margin: 0;
+    cursor: pointer;
+}
+
+.radio-label input[type="radio"]:checked + span {
+    color: var(--color-red);
+    font-weight: 600;
+}
+
+.radio-label:has(input[type="radio"]:checked) {
+    border-color: var(--color-red);
+    background-color: rgba(220, 38, 38, 0.05);
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-xs);
+    cursor: pointer;
+    font-weight: 400;
+    color: var(--color-navy);
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: auto;
+    margin-top: 0.25rem;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.checkbox-label a {
+    color: var(--color-red);
+    text-decoration: underline;
+}
+
+.checkbox-label a:hover {
+    color: var(--color-red-dark);
 }
 
 .form-actions {
@@ -1768,6 +1893,10 @@ body {
         max-height: 95vh;
     }
     
+    .modal-content-large {
+        max-width: 95%;
+    }
+    
     .modal-header {
         padding: var(--spacing-lg) var(--spacing-md) var(--spacing-md);
     }
@@ -1780,12 +1909,24 @@ body {
         padding: var(--spacing-md);
     }
     
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-radio-group {
+        flex-direction: column;
+    }
+    
     .form-actions {
         flex-direction: column;
     }
     
     .form-actions button {
         width: 100%;
+    }
+    
+    .form-section-title {
+        font-size: 1.25rem;
     }
     
     .cta-box {
