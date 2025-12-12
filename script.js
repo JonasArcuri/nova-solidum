@@ -153,7 +153,7 @@ document.addEventListener('keydown', (e) => {
 // Exemplo: 'https://seu-backend.vercel.app'
 const BACKEND_CONFIG = {
     enabled: true, // Mude para false para usar EmailJS
-    url: 'back-end-nova.vercel.app/api/email/send' // URL do backend no Vercel
+    url: 'https://back-end-nova.vercel.app/api/email/send' // URL do backend no Vercel
 };
 
 // Configuração do EmailJS (fallback se backend não estiver disponível)
@@ -217,6 +217,7 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
         }
         
         console.log(`📤 Enviando formulário para backend: ${filesCount} arquivo(s) anexado(s)`);
+        console.log(`📍 URL do backend: ${BACKEND_CONFIG.url}`);
         
         // Enviar para o backend
         const response = await fetch(BACKEND_CONFIG.url, {
@@ -225,8 +226,23 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
         });
         
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
-            throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`);
+            let errorMessage = `Erro ${response.status}: ${response.statusText}`;
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.error || errorData.message || errorMessage;
+            } catch (e) {
+                // Se não conseguir ler JSON, usar mensagem padrão baseada no status
+                if (response.status === 405) {
+                    errorMessage = 'Método não permitido (405). O endpoint pode não estar configurado corretamente no backend ou o Vercel pode estar bloqueando a requisição. Verifique a configuração do backend no Vercel.';
+                } else if (response.status === 404) {
+                    errorMessage = 'Endpoint não encontrado (404). Verifique se a URL do backend está correta.';
+                } else if (response.status === 500) {
+                    errorMessage = 'Erro interno do servidor (500). Verifique os logs do backend.';
+                } else if (response.status === 0) {
+                    errorMessage = 'Erro de conexão. Verifique se o backend está online e se há problemas de CORS.';
+                }
+            }
+            throw new Error(errorMessage);
         }
         
         const result = await response.json();
@@ -387,7 +403,7 @@ const TINIFY_CONFIG = {
     apiUrl: 'https://api.tinify.com/shrink',
     // IMPORTANTE: Substitua pela URL do seu backend hospedado no Vercel
     // Exemplo: 'https://seu-backend.vercel.app/api/tinify/compress'
-    backendUrl: 'https://seu-backend.vercel.app/api/tinify/compress' // URL do backend proxy no Vercel
+    backendUrl: 'https://back-end-nova.vercel.app/api/tinify/compress' // URL do backend proxy no Vercel
 };
 
 // Comprimir imagem usando Tinify (melhor qualidade)
