@@ -1,6 +1,8 @@
-# 🖼️ Backend Proxy para Tinify
+# 🖼️ Backend - Nova Solidum
 
-Backend simples em Node.js que faz proxy das requisições para a API do Tinify, resolvendo problemas de CORS.
+Backend em Node.js com duas funcionalidades principais:
+1. **Envio de emails com anexos reais** (usando Nodemailer)
+2. **Proxy para API do Tinify** (resolve problemas de CORS)
 
 ## 📋 Pré-requisitos
 
@@ -17,16 +19,15 @@ Backend simples em Node.js que faz proxy das requisições para a API do Tinify,
    ```
 
 2. **Configure as variáveis de ambiente:**
-   ```bash
-   cp .env.example .env
-   ```
+   - Copie `ENV_EXAMPLE.txt` para `.env`
+   - Edite o arquivo `.env` com suas credenciais
    
-   Edite o arquivo `.env` e adicione sua API key do Tinify:
-   ```
-   TINIFY_API_KEY=sua_api_key_aqui
-   PORT=3000
-   FRONTEND_URL=http://localhost:5500
-   ```
+   **Para envio de emails (obrigatório):**
+   - Veja `EMAIL_SETUP.md` para instruções detalhadas
+   - Configure: `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASS`
+   
+   **Para Tinify (opcional):**
+   - Configure: `TINIFY_API_KEY`
 
 ## ▶️ Como Executar
 
@@ -50,7 +51,21 @@ GET /health
 ```
 Retorna status do servidor.
 
-### Comprimir Imagem
+### Enviar Email com Anexos
+```
+POST /api/email/send
+Content-Type: multipart/form-data
+Body: { 
+  formData: JSON,
+  documentFront: File (opcional),
+  documentBack: File (opcional),
+  ... outros arquivos
+}
+```
+
+**Nota:** Veja `EMAIL_SETUP.md` para configuração completa.
+
+### Comprimir Imagem (Tinify)
 ```
 POST /api/tinify/compress
 Content-Type: multipart/form-data
@@ -90,35 +105,37 @@ const TINIFY_CONFIG = {
 
 ## 🌐 Deploy em Produção
 
-### Opções de Deploy:
+### 🚀 Guias de Deploy:
 
-1. **Heroku:**
-   ```bash
-   heroku create
-   heroku config:set TINIFY_API_KEY=sua_api_key
-   git push heroku main
-   ```
+- **📖 Guia Completo:** Veja [`DEPLOY.md`](./DEPLOY.md) - Todas as opções detalhadas
+- **⚡ Quick Start:** Veja [`QUICK_START.md`](./QUICK_START.md) - Deploy rápido em 5 minutos
 
-2. **Vercel:**
-   - Conecte seu repositório
-   - Configure variáveis de ambiente
+### Opções Recomendadas:
+
+1. **🚂 Railway** (Mais fácil - Gratuito)
+   - Deploy em 5 minutos
+   - Suporta variáveis de ambiente
    - Deploy automático
 
-3. **Railway:**
-   - Conecte repositório
-   - Configure variáveis de ambiente
+2. **🎨 Render** (Gratuito)
+   - Fácil de configurar
    - Deploy automático
 
-4. **Servidor próprio:**
-   - Use PM2 para gerenciar o processo
-   - Configure nginx como reverse proxy
-   - Use SSL/HTTPS
+3. **🖥️ VPS** (DigitalOcean, Linode)
+   - Controle total
+   - Melhor performance
 
 ### Variáveis de Ambiente em Produção:
 
-- `TINIFY_API_KEY`: Sua API key do Tinify
-- `PORT`: Porta do servidor (geralmente definida pelo serviço)
-- `FRONTEND_URL`: URL do seu frontend (ex: https://seusite.com)
+- `EMAIL_HOST`: Servidor SMTP (ex: smtp.gmail.com)
+- `EMAIL_PORT`: Porta SMTP (ex: 587)
+- `EMAIL_SECURE`: true/false
+- `EMAIL_USER`: Seu email
+- `EMAIL_PASS`: Senha de App
+- `COMPANY_EMAIL`: Email da empresa
+- `FRONTEND_URL`: URL do frontend
+- `PORT`: Porta (geralmente definida pela plataforma)
+- `TINIFY_API_KEY`: (Opcional) API key do Tinify
 
 ## 🔒 Segurança
 
