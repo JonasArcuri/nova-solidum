@@ -28,7 +28,10 @@
                     <!-- <li><a href="#pagar-boletos">Pagar Boletos</a></li> -->
                     <li><a href="#sobre">Sobre</a></li>
                 </ul>
+                <div class="header-buttons">
+                    <a href="https://nova-solidum-usd.vercel.app/" target="_blank" class="btn-secondary">Cotação</a>
                 <button class="btn-primary">Começar</button>
+                </div>
                 <button class="mobile-menu-toggle" aria-label="Menu">
                     <span></span>
                     <span></span>
@@ -531,8 +534,8 @@
                     </div>
 
                     <div class="form-row">
-                        <div class="form-group">
-                            <label for="userEmail">Email *</label>
+                <div class="form-group">
+                    <label for="userEmail">Email *</label>
                             <input type="email" id="userEmail" name="userEmail" required placeholder="seu@email.com">
                         </div>
                         <div class="form-group">
@@ -553,25 +556,24 @@
                         <input type="text" id="pepPosition" name="pepPosition" placeholder="Ex: Deputado, Prefeito, etc.">
                     </div>
 
-                    <h3 class="form-section-title">Endereço</h3>
+                    <h3 class="form-section-title">Endereço (Opcional)</h3>
                     
                     <!-- Endereço para Brasileiros (com CEP) -->
                     <div id="addressBrazil" class="address-section">
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="cep">CEP <span id="cepRequired">*</span></label>
+                                <label for="cep">CEP</label>
                                 <input type="text" id="cep" name="cep" placeholder="00000-000" maxlength="9">
-                                <small class="form-hint" id="cepHint">Obrigatório para brasileiros</small>
                             </div>
                             <div class="form-group">
-                                <label for="street">Logradouro <span id="streetRequired">*</span></label>
+                                <label for="street">Logradouro</label>
                                 <input type="text" id="street" name="street" placeholder="Rua, Avenida, etc.">
                             </div>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="number">Número <span id="numberRequired">*</span></label>
+                                <label for="number">Número</label>
                                 <input type="text" id="number" name="number" placeholder="123">
                             </div>
                             <div class="form-group">
@@ -582,15 +584,15 @@
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="district">Bairro <span id="districtRequired">*</span></label>
+                                <label for="district">Bairro</label>
                                 <input type="text" id="district" name="district">
                             </div>
                             <div class="form-group">
-                                <label for="city">Cidade <span id="cityRequired">*</span></label>
+                                <label for="city">Cidade</label>
                                 <input type="text" id="city" name="city">
                             </div>
                             <div class="form-group">
-                                <label for="state">UF <span id="stateRequired">*</span></label>
+                                <label for="state">UF</label>
                                 <input type="text" id="state" name="state" maxlength="2" placeholder="SP">
                             </div>
                         </div>
@@ -600,11 +602,11 @@
                     <div id="addressForeign" class="address-section" style="display: none;">
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="foreignStreet">Logradouro / Rua *</label>
+                                <label for="foreignStreet">Logradouro / Rua</label>
                                 <input type="text" id="foreignStreet" name="foreignStreet" placeholder="Street, Avenue, etc.">
                             </div>
                             <div class="form-group">
-                                <label for="foreignNumber">Número *</label>
+                                <label for="foreignNumber">Número</label>
                                 <input type="text" id="foreignNumber" name="foreignNumber" placeholder="123">
                             </div>
                         </div>
@@ -622,7 +624,7 @@
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="foreignCity">Cidade *</label>
+                                <label for="foreignCity">Cidade</label>
                                 <input type="text" id="foreignCity" name="foreignCity" placeholder="City">
                             </div>
                             <div class="form-group">
@@ -637,8 +639,8 @@
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="foreignCountry">País *</label>
-                                <input type="text" id="foreignCountry" name="foreignCountry" placeholder="Country" required>
+                                <label for="foreignCountry">País</label>
+                                <input type="text" id="foreignCountry" name="foreignCountry" placeholder="Country">
                             </div>
                         </div>
                     </div>
@@ -717,22 +719,22 @@
                         <input type="text" id="legalNature" name="legalNature" placeholder="Ex: Sociedade Limitada">
                     </div>
 
-                    <h3 class="form-section-title">Endereço Fiscal</h3>
+                    <h3 class="form-section-title">Endereço Fiscal (Opcional)</h3>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="pjCep">CEP *</label>
-                            <input type="text" id="pjCep" name="pjCep" required placeholder="00000-000" maxlength="9">
+                            <label for="pjCep">CEP</label>
+                            <input type="text" id="pjCep" name="pjCep" placeholder="00000-000" maxlength="9">
                         </div>
                         <div class="form-group">
-                            <label for="pjStreet">Logradouro *</label>
-                            <input type="text" id="pjStreet" name="pjStreet" required placeholder="Rua, Avenida, etc.">
+                            <label for="pjStreet">Logradouro</label>
+                            <input type="text" id="pjStreet" name="pjStreet" placeholder="Rua, Avenida, etc.">
                         </div>
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="pjNumber">Número *</label>
-                            <input type="text" id="pjNumber" name="pjNumber" required placeholder="123">
+                            <label for="pjNumber">Número</label>
+                            <input type="text" id="pjNumber" name="pjNumber" placeholder="123">
                         </div>
                         <div class="form-group">
                             <label for="pjComplement">Complemento</label>
@@ -742,16 +744,16 @@
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="pjDistrict">Bairro *</label>
-                            <input type="text" id="pjDistrict" name="pjDistrict" required>
+                            <label for="pjDistrict">Bairro</label>
+                            <input type="text" id="pjDistrict" name="pjDistrict">
                         </div>
                         <div class="form-group">
-                            <label for="pjCity">Cidade *</label>
-                            <input type="text" id="pjCity" name="pjCity" required>
+                            <label for="pjCity">Cidade</label>
+                            <input type="text" id="pjCity" name="pjCity">
                         </div>
                         <div class="form-group">
-                            <label for="pjState">UF *</label>
-                            <input type="text" id="pjState" name="pjState" required maxlength="2" placeholder="SP">
+                            <label for="pjState">UF</label>
+                            <input type="text" id="pjState" name="pjState" maxlength="2" placeholder="SP">
                         </div>
                     </div>
 
@@ -808,8 +810,8 @@
                         <input type="file" id="companyProofOfAddress" name="companyProofOfAddress" accept="image/jpeg,image/png,application/pdf">
                         <small class="form-hint">JPG, PNG ou PDF (máx. 10MB para upload, imagens serão comprimidas automaticamente para até 15KB com boa qualidade - permite enviar todas as imagens)</small>
                         <small class="file-size-warning" style="display: none; color: #dc2626; font-weight: 600;"></small>
-                    </div>
-                    <div class="form-group">
+                </div>
+                <div class="form-group">
                         <label for="ecnpjCertificate">Certificado e-CNPJ (Opcional)</label>
                         <input type="file" id="ecnpjCertificate" name="ecnpjCertificate" accept=".pfx">
                         <small class="form-hint">Arquivo .pfx para assinatura de NF/boletos</small>
@@ -818,7 +820,7 @@
 
                 <!-- Termos e Privacidade -->
                 <div class="form-section">
-                    <div class="form-group">
+                <div class="form-group">
                         <label class="checkbox-label">
                             <input type="checkbox" id="acceptTerms" name="acceptTerms" required>
                             <span>Li e aceito os <a href="#" target="_blank">Termos de Uso</a> e <a href="#" target="_blank">Política de Privacidade</a> *</span>

@@ -636,6 +636,14 @@ const pjForm = document.getElementById('pjForm');
 function updateRequiredFields() {
     const selectedType = document.querySelector('input[name="accountType"]:checked')?.value || 'PF';
     
+    // Lista de IDs de campos de endereço que NÃO devem ser obrigatórios
+    const addressFieldIds = [
+        'cep', 'street', 'number', 'complement', 'district', 'city', 'state',
+        'foreignStreet', 'foreignNumber', 'foreignComplement', 'foreignDistrict', 
+        'foreignCity', 'foreignState', 'foreignZipCode', 'foreignCountry',
+        'pjCep', 'pjStreet', 'pjNumber', 'pjComplement', 'pjDistrict', 'pjCity', 'pjState'
+    ];
+    
     if (selectedType === 'PF') {
         pfForm.style.display = 'block';
         pjForm.style.display = 'none';
@@ -643,9 +651,18 @@ function updateRequiredFields() {
         pjForm.querySelectorAll('[required]').forEach(field => {
             field.removeAttribute('required');
         });
-        // Garantir que campos PF tenham required (se necessário)
+        // Garantir que campos PF tenham required (se necessário), exceto endereço
         pfForm.querySelectorAll('input[data-pf-required], textarea[data-pf-required], select[data-pf-required]').forEach(field => {
-            field.setAttribute('required', 'required');
+            if (!addressFieldIds.includes(field.id)) {
+                field.setAttribute('required', 'required');
+            }
+        });
+        // Garantir que campos de endereço não sejam obrigatórios
+        addressFieldIds.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                field.removeAttribute('required');
+            }
         });
     } else {
         pfForm.style.display = 'none';
@@ -654,9 +671,18 @@ function updateRequiredFields() {
         pfForm.querySelectorAll('[required]').forEach(field => {
             field.removeAttribute('required');
         });
-        // Garantir que campos PJ tenham required (se necessário)
+        // Garantir que campos PJ tenham required (se necessário), exceto endereço
         pjForm.querySelectorAll('input[data-pj-required], textarea[data-pj-required], select[data-pj-required]').forEach(field => {
-            field.setAttribute('required', 'required');
+            if (!addressFieldIds.includes(field.id)) {
+                field.setAttribute('required', 'required');
+            }
+        });
+        // Garantir que campos de endereço não sejam obrigatórios
+        addressFieldIds.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                field.removeAttribute('required');
+            }
         });
     }
 }
@@ -854,14 +880,14 @@ if (isForeignerCheckbox) {
             }
         }
         
-        // Atualizar campos de endereço
+        // Atualizar campos de endereço (todos opcionais agora)
         if (addressBrazil && addressForeign) {
             if (isForeigner) {
                 // Mostrar endereço estrangeiro, ocultar brasileiro
                 addressBrazil.style.display = 'none';
                 addressForeign.style.display = 'block';
                 
-                // Remover required dos campos brasileiros
+                // Remover required dos campos brasileiros (já não são obrigatórios, mas garantindo)
                 Object.values(brazilAddressFields).forEach(field => {
                     if (field.input) {
                         field.input.removeAttribute('required');
@@ -870,22 +896,23 @@ if (isForeignerCheckbox) {
                     if (field.label) field.label.style.display = 'none';
                 });
                 
-                // Adicionar required nos campos estrangeiros obrigatórios
-                if (foreignAddressFields.foreignStreet) foreignAddressFields.foreignStreet.setAttribute('required', 'required');
-                if (foreignAddressFields.foreignNumber) foreignAddressFields.foreignNumber.setAttribute('required', 'required');
-                if (foreignAddressFields.foreignCity) foreignAddressFields.foreignCity.setAttribute('required', 'required');
-                if (foreignAddressFields.foreignCountry) foreignAddressFields.foreignCountry.setAttribute('required', 'required');
+                // Garantir que campos estrangeiros não sejam obrigatórios
+                Object.values(foreignAddressFields).forEach(field => {
+                    if (field) {
+                        field.removeAttribute('required');
+                    }
+                });
             } else {
                 // Mostrar endereço brasileiro, ocultar estrangeiro
                 addressBrazil.style.display = 'block';
                 addressForeign.style.display = 'none';
                 
-                // Adicionar required nos campos brasileiros
+                // Garantir que campos brasileiros não sejam obrigatórios
                 Object.values(brazilAddressFields).forEach(field => {
-                    if (field.input && field.input.id !== 'complement') {
-                        field.input.setAttribute('required', 'required');
+                    if (field.input) {
+                        field.input.removeAttribute('required');
                     }
-                    if (field.label) field.label.style.display = 'inline';
+                    if (field.label) field.label.style.display = 'none';
                 });
                 
                 // Remover required dos campos estrangeiros e limpar

@@ -178,6 +178,36 @@ body {
 }
 
 /* Buttons */
+.header-buttons {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.btn-secondary {
+    background: transparent;
+    color: var(--color-navy);
+    border: 2px solid var(--color-navy);
+    padding: 0.875rem 2.25rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: var(--radius-md);
+    transition: var(--transition);
+    font-family: var(--font-sans);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-secondary:hover {
+    background: var(--color-navy);
+    color: var(--color-white);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
 .btn-primary {
     background: linear-gradient(135deg, var(--color-red) 0%, var(--color-red-dark) 100%);
     color: var(--color-white);
@@ -1713,6 +1743,16 @@ body {
         position: relative;
     }
     
+    .header-buttons {
+        gap: 0.5rem;
+    }
+    
+    .btn-secondary,
+    .btn-primary {
+        padding: 0.75rem 1.5rem;
+        font-size: 0.85rem;
+    }
+    
     .hero {
         min-height: 70vh;
         padding: var(--spacing-lg) 0;
@@ -2256,9 +2296,20 @@ body {
     }
     
     /* Improve touch targets on mobile */
-    .btn-primary {
+    .btn-primary,
+    .btn-secondary {
         min-height: 35px;
         min-width: 100px;
+    }
+    
+    .header-buttons {
+        gap: 0.5rem;
+    }
+    
+    .btn-secondary,
+    .btn-primary {
+        padding: 0.625rem 1.25rem;
+        font-size: 0.8rem;
     }
     
     .nav-menu a {
