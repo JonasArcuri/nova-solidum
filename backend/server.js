@@ -381,19 +381,24 @@ app.post('/api/tinify/compress', upload.single('image'), async (req, res) => {
     }
 });
 
-// Iniciar servidor
-app.listen(PORT, () => {
-    console.log(`🚀 Servidor Backend rodando na porta ${PORT}`);
-    console.log(`📡 Health check: http://localhost:${PORT}/health`);
-    console.log(`🔧 Tinify: http://localhost:${PORT}/api/tinify/compress`);
-    console.log(`📧 Email: http://localhost:${PORT}/api/email/send`);
-    
-    if (!process.env.TINIFY_API_KEY) {
-        console.warn('⚠️  TINIFY_API_KEY não configurada! Configure no arquivo .env');
-    }
-    
-    if (!transporter) {
-        console.warn('⚠️  Servidor de email não configurado! Configure EMAIL_HOST, EMAIL_USER e EMAIL_PASS no .env');
-    }
-});
+// Exportar app para Vercel (serverless)
+module.exports = app;
+
+// Iniciar servidor apenas se não estiver no Vercel
+if (process.env.VERCEL !== '1' && !process.env.VERCEL_ENV) {
+    app.listen(PORT, () => {
+        console.log(`🚀 Servidor Backend rodando na porta ${PORT}`);
+        console.log(`📡 Health check: http://localhost:${PORT}/health`);
+        console.log(`🔧 Tinify: http://localhost:${PORT}/api/tinify/compress`);
+        console.log(`📧 Email: http://localhost:${PORT}/api/email/send`);
+        
+        if (!process.env.TINIFY_API_KEY) {
+            console.warn('⚠️  TINIFY_API_KEY não configurada! Configure no arquivo .env');
+        }
+        
+        if (!transporter) {
+            console.warn('⚠️  Servidor de email não configurado! Configure EMAIL_HOST, EMAIL_USER e EMAIL_PASS no .env');
+        }
+    });
+}
 
