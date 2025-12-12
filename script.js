@@ -148,13 +148,7 @@ document.addEventListener('keydown', (e) => {
 // 4. Copie os Template IDs e cole abaixo
 // 5. Copie o Service ID e Public Key e cole abaixo
 
-// Configuração do Backend (para envio de emails com anexos reais)
-const BACKEND_CONFIG = {
-    enabled: true, // Mude para false para usar EmailJS
-    url: 'http://localhost:3000/api/email/send' // URL do backend
-};
-
-// Configuração do EmailJS (fallback se backend não estiver disponível)
+// EmailJS Configuration
 const EMAILJS_CONFIG = {
     serviceID: 'service_pwkak2r',           // Cole aqui o Service ID
     templateIDCompany: 'template_5pxvv6e',  // Cole aqui o Template ID para a empresa
@@ -189,74 +183,6 @@ function showMessage(message, type) {
     formMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-// Função para enviar formulário para o backend
-async function sendFormToBackend(formData, accountType, submitBtn) {
-    try {
-        // Criar FormData para enviar arquivos
-        const formDataToSend = new FormData();
-        
-        // Adicionar dados do formulário como JSON
-        formDataToSend.append('formData', JSON.stringify(formData));
-        
-        // Adicionar arquivos
-        const fileFields = accountType === 'PF'
-            ? ['documentFront', 'documentBack', 'selfie', 'proofOfAddress']
-            : ['articlesOfAssociation', 'cnpjCard', 'adminIdFront', 'adminIdBack', 'companyProofOfAddress', 'ecnpjCertificate'];
-        
-        let filesCount = 0;
-        for (const fieldId of fileFields) {
-            const input = document.getElementById(fieldId);
-            if (input && input.files.length > 0) {
-                const file = input.files[0];
-                formDataToSend.append(fieldId, file);
-                filesCount++;
-                console.log(`📎 Adicionando arquivo: ${fieldId} - ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
-            }
-        }
-        
-        console.log(`📤 Enviando formulário para backend: ${filesCount} arquivo(s) anexado(s)`);
-        
-        // Enviar para o backend
-        const response = await fetch(BACKEND_CONFIG.url, {
-            method: 'POST',
-            body: formDataToSend
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
-            throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`);
-        }
-        
-        const result = await response.json();
-        console.log('✅ Email enviado com sucesso!', result);
-        
-        // Show success message
-        showMessage(`Formulário enviado com sucesso! ${result.attachmentsCount} anexo(s) enviado(s). Verifique seu email para confirmação. Entraremos em contato em breve.`, 'success');
-        
-        // Reset form after 3 seconds
-        setTimeout(() => {
-            registerForm.reset();
-            closeModal();
-        }, 3000);
-        
-    } catch (error) {
-        console.error('❌ Erro ao enviar para backend:', error);
-        
-        // Tentar fallback para EmailJS se backend falhar
-        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-            console.warn('⚠️ Backend não disponível. Tentando usar EmailJS como fallback...');
-            showMessage('Backend não disponível. Tentando método alternativo...', 'loading');
-            // Não fazer fallback automático, apenas mostrar erro
-            showMessage(`Erro ao conectar com o servidor. Verifique se o backend está rodando em ${BACKEND_CONFIG.url}. Erro: ${error.message}`, 'error');
-        } else {
-            showMessage(`Erro ao enviar formulário: ${error.message}. Por favor, tente novamente ou entre em contato diretamente pelo email novasolidum@gmail.com`, 'error');
-        }
-    } finally {
-        // Re-enable submit button
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Enviar';
-    }
-}
 
 // ========== VALIDAÇÕES E UTILITÁRIOS ==========
 
@@ -1248,14 +1174,8 @@ if (registerForm) {
                 };
             }
             
-            // Verificar se deve usar backend ou EmailJS
-            if (BACKEND_CONFIG.enabled) {
-                // Usar backend para envio com anexos reais
-                await sendFormToBackend(formData, accountType, submitBtn);
-                return;
-            }
-            
-            // Fallback: Processar arquivos para EmailJS (base64 embutido)
+            // Processar arquivos: tentar enviar como base64 se <= 10MB
+            // Nota: EmailJS tem limite de 50KB total, então arquivos grandes podem não ser enviados
             const MAX_FILE_SIZE_FOR_EMAIL = 10 * 1024 * 1024; // 10MB em bytes
             const fileFields = accountType === 'PF'
                 ? ['documentFront', 'documentBack', 'selfie', 'proofOfAddress']
@@ -1270,27 +1190,26 @@ if (registerForm) {
                     formData[fieldId + '_size'] = file.size;
                     formData[fieldId + '_size_kb'] = (file.size / 1024).toFixed(2) + ' KB';
                     
-                    // Se arquivo <= 10MB, converter para base64 (para anexo)
+                    // Se arquivo <= 10MB, tentar comprimir e converter para base64
                     if (file.size <= MAX_FILE_SIZE_FOR_EMAIL) {
                         try {
-                            // Converter para base64 (sem compressão excessiva, já que será anexo)
+                            // Comprimir imagem para máximo de 15KB (boa qualidade, permite 3-4 imagens no email)
                             if (file.type.startsWith('image/')) {
-                                // Comprimir apenas se muito grande (mantém qualidade para anexo)
-                                if (file.size > 2 * 1024 * 1024) { // Se > 2MB, comprimir
-                                    formData[fieldId + '_base64'] = await compressImage(file, 50); // 50KB para anexos
-                                } else {
-                                    formData[fieldId + '_base64'] = await fileToBase64(file);
-                                }
-                                const base64Size = new Blob([formData[fieldId + '_base64']]).size / 1024;
+                                formData[fieldId + '_base64'] = await compressImage(file, 15);
+                                const compressedSize = new Blob([formData[fieldId + '_base64']]).size / 1024;
                                 formData[fieldId + '_sent'] = true;
-                                formData[fieldId + '_note'] = `Arquivo preparado para anexo (${base64Size.toFixed(2)} KB)`;
-                                console.log(`✅ ${fieldId}: ${(file.size / 1024).toFixed(2)} KB → ${base64Size.toFixed(2)} KB (anexo)`);
+                                formData[fieldId + '_note'] = `Imagem comprimida para ${compressedSize.toFixed(2)} KB (máx. 15 KB, boa qualidade)`;
+                                console.log(`✅ ${fieldId}: ${(file.size / 1024).toFixed(2)} KB → ${compressedSize.toFixed(2)} KB`);
                             } else {
-                                // Para PDFs e outros, converter para base64
+                                // Para PDFs e outros, usar método original (mas pode não caber no email)
                                 formData[fieldId + '_base64'] = await fileToBase64(file);
                                 const base64Size = new Blob([formData[fieldId + '_base64']]).size / 1024;
                                 formData[fieldId + '_sent'] = true;
-                                formData[fieldId + '_note'] = `Arquivo preparado para anexo (${base64Size.toFixed(2)} KB)`;
+                                if (base64Size > 15) {
+                                    formData[fieldId + '_note'] = `Arquivo PDF (${base64Size.toFixed(2)} KB) - pode não ser enviado por email devido ao limite de 15KB`;
+                                } else {
+                                    formData[fieldId + '_note'] = `Arquivo convertido (${base64Size.toFixed(2)} KB)`;
+                                }
                             }
                         } catch (error) {
                             console.error(`Erro ao processar ${fieldId}:`, error);
@@ -1537,86 +1456,76 @@ if (registerForm) {
                 companyTemplateParams.has_documents = 'SIM';
             }
             
-            // Adicionar arquivos como anexos aos parâmetros do template
-            // EmailJS não suporta anexos reais, mas podemos usar formato de anexo embutido
-            // Formato: base64 puro (sem prefixo data:) + nome do arquivo + tipo MIME
-            const EMAILJS_MAX_SIZE = 50 * 1024; // 50KB limite do EmailJS (ainda aplica)
+            // Adicionar arquivos base64 comprimidos aos parâmetros do template
+            // EmailJS tem limite de 50KB total, imagens comprimidas para máximo 15KB cada (boa qualidade)
+            // Estratégia: enviar TODAS as imagens possíveis (3-4 imagens de ~12-15KB cada)
+            const EMAILJS_MAX_SIZE = 50 * 1024; // 50KB limite do EmailJS
+            const SAFE_SIZE = 45 * 1024; // 45KB para margem de segurança (permite 3-4 imagens de ~12-15KB cada)
             
-            // Coletar todos os arquivos com base64 para anexos
-            const filesForAttachments = [];
+            // Coletar todos os arquivos com base64 e calcular tamanho real
+            const filesWithBase64 = [];
             for (const fieldId of fileFieldsForTemplate) {
                 if (formData[fieldId + '_base64']) {
-                    const base64Full = formData[fieldId + '_base64'];
-                    // Extrair base64 puro (remover prefixo data:image/...;base64,)
-                    const base64Pure = base64Full.includes(',') ? base64Full.split(',')[1] : base64Full;
+                    const base64 = formData[fieldId + '_base64'];
                     // Tamanho da string base64 em bytes
-                    const base64Size = new Blob([base64Pure]).size;
-                    filesForAttachments.push({
+                    const base64Size = new Blob([base64]).size;
+                    filesWithBase64.push({
                         fieldId: fieldId,
-                        base64: base64Pure, // Base64 puro para anexo
-                        base64Full: base64Full, // Base64 completo para referência
+                        base64: base64,
                         size: base64Size, // Tamanho em bytes
-                        name: formData[fieldId + '_name'] || 'arquivo',
-                        type: formData[fieldId + '_type'] || 'application/octet-stream'
+                        name: formData[fieldId + '_name'] || 'arquivo'
                     });
                 }
             }
             
-            // Adicionar anexos aos parâmetros (formato do EmailJS para anexos)
-            const addedAttachments = [];
-            const skippedAttachments = [];
+            // Estratégia: tentar enviar TODAS as imagens, priorizando imagens sobre form_data
+            // Ordenar por tamanho (menores primeiro) para maximizar número de imagens
+            filesWithBase64.sort((a, b) => a.size - b.size);
             
-            // Calcular tamanho total dos parâmetros sem anexos
-            let baseParamsSize = new Blob([JSON.stringify(companyTemplateParams)]).size;
+            // Adicionar TODAS as imagens primeiro (sem form_data)
+            let totalBase64Size = 0;
+            const addedFiles = [];
+            const skippedFiles = [];
             
-            // Adicionar anexos um por um, verificando limite
-            for (const file of filesForAttachments) {
-                // Criar objeto de teste com este anexo
+            // Adicionar todas as imagens possíveis
+            for (const file of filesWithBase64) {
+                // Calcular tamanho se adicionarmos este arquivo (sem form_data ainda)
                 const testParams = JSON.parse(JSON.stringify(companyTemplateParams));
-                addedAttachments.forEach(f => {
-                    // Formato de anexo do EmailJS: attachment_N, attachment_N_name, attachment_N_type
-                    const index = addedAttachments.length;
-                    testParams[`attachment_${index}`] = f.base64;
-                    testParams[`attachment_${index}_name`] = f.name;
-                    testParams[`attachment_${index}_type`] = f.type;
+                addedFiles.forEach(f => {
+                    testParams[f.fieldId + '_image'] = f.base64;
+                    testParams[f.fieldId + '_name'] = f.name;
                 });
-                const newIndex = addedAttachments.length;
-                testParams[`attachment_${newIndex}`] = file.base64;
-                testParams[`attachment_${newIndex}_name`] = file.name;
-                testParams[`attachment_${newIndex}_type`] = file.type;
+                testParams[file.fieldId + '_image'] = file.base64;
+                testParams[file.fieldId + '_name'] = file.name;
                 
-                // Calcular tamanho total estimado
+                // Calcular tamanho total estimado (sem form_data)
                 const testParamsSize = new Blob([JSON.stringify(testParams)]).size;
                 
-                // Verificar se cabe no limite total
+                // Verificar se cabe no limite total (priorizando imagens)
                 if (testParamsSize <= EMAILJS_MAX_SIZE) {
-                    // Cabe, adicionar como anexo
-                    const index = addedAttachments.length;
-                    companyTemplateParams[`attachment_${index}`] = file.base64;
-                    companyTemplateParams[`attachment_${index}_name`] = file.name;
-                    companyTemplateParams[`attachment_${index}_type`] = file.type;
+                    // Cabe, adicionar
+                    companyTemplateParams[file.fieldId + '_image'] = file.base64;
+                    companyTemplateParams[file.fieldId + '_name'] = file.name;
                     companyTemplateParams['has_' + file.fieldId] = 'SIM'; // Flag para mostrar no template
-                    addedAttachments.push(file);
-                    console.log(`✅ Adicionando anexo ${index}: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
+                    totalBase64Size += file.size;
+                    addedFiles.push(file);
+                    console.log(`✅ Adicionando ${file.fieldId}_image (${(file.size / 1024).toFixed(2)} KB)`);
                 } else {
                     // Não cabe, pular
-                    skippedAttachments.push(file);
+                    skippedFiles.push(file);
                     if (formData[file.fieldId + '_sent'] !== false) {
                         formData[file.fieldId + '_sent'] = false;
                     }
                     if (formData[file.fieldId + '_note']) {
-                        formData[file.fieldId + '_note'] += ` Não enviado como anexo (limite de 50KB total do EmailJS).`;
+                        formData[file.fieldId + '_note'] += ` Não enviado por email (limite de 50KB total do EmailJS).`;
                     } else {
-                        formData[file.fieldId + '_note'] = `Não enviado como anexo (limite de 50KB total do EmailJS).`;
+                        formData[file.fieldId + '_note'] = `Não enviado por email (limite de 50KB total do EmailJS).`;
                     }
-                    console.warn(`⚠️ Pulando anexo: ${file.name} (${(file.size / 1024).toFixed(2)} KB) - excederia limite`);
+                    console.warn(`⚠️ Pulando ${file.fieldId}_image (${(file.size / 1024).toFixed(2)} KB) - excederia limite`);
                 }
             }
             
-            // Adicionar contador de anexos
-            companyTemplateParams.attachment_count = addedAttachments.length.toString();
-            
-            // Calcular tamanho final
+            // Calcular tamanho final com todas as imagens adicionadas
             const finalParamsSize = new Blob([JSON.stringify(companyTemplateParams)]).size;
             const formDataJsonSize = new Blob([JSON.stringify(formDataWithoutBase64, null, 2)]).size;
             const estimatedTotalSize = finalParamsSize + formDataJsonSize;
@@ -1625,34 +1534,35 @@ if (registerForm) {
             if (estimatedTotalSize <= EMAILJS_MAX_SIZE) {
                 // Tamanho OK, pode enviar form_data também
                 companyTemplateParams.form_data = JSON.stringify(formDataWithoutBase64, null, 2);
-                if (addedAttachments.length === filesForAttachments.length) {
-                    companyTemplateParams.form_data_note = `✅ Todas as ${addedAttachments.length} anexo(s) enviado(s) com sucesso!`;
+                if (addedFiles.length === filesWithBase64.length) {
+                    companyTemplateParams.form_data_note = `✅ Todas as ${addedFiles.length} imagem(ns) enviada(s) com sucesso!`;
                 } else {
-                    companyTemplateParams.form_data_note = `${addedAttachments.length} anexo(s) enviado(s). ${skippedAttachments.length} não enviado(s) devido ao limite.`;
+                    companyTemplateParams.form_data_note = `${addedFiles.length} imagem(ns) enviada(s). ${skippedFiles.length} não enviada(s) devido ao limite.`;
                 }
             } else {
-                // Não cabe form_data, mas mantém todos os anexos
-                console.log(`ℹ️ Removendo form_data para manter todos os ${addedAttachments.length} anexo(s) enviados`);
-                companyTemplateParams.form_data_note = `✅ ${addedAttachments.length} anexo(s) enviado(s)! Dados completos não enviados para economizar espaço (limite de 50KB).`;
+                // Não cabe form_data, mas mantém todas as imagens
+                console.log(`ℹ️ Removendo form_data para manter todas as ${addedFiles.length} imagem(ns) enviadas`);
+                companyTemplateParams.form_data_note = `✅ Todas as ${addedFiles.length} imagem(ns) enviada(s)! Dados completos não enviados para economizar espaço (limite de 50KB).`;
             }
             
             // Log para debug
-            if (addedAttachments.length > 0) {
-                const totalSize = addedAttachments.reduce((sum, f) => sum + f.size, 0);
-                console.log(`✅ ${addedAttachments.length} anexo(s) adicionado(s) ao email (total: ${(totalSize / 1024).toFixed(2)} KB)`);
-                console.log('📎 Anexos que serão enviados:');
-                addedAttachments.forEach((f, index) => {
-                    console.log(`   - Anexo ${index}: ${f.name} (${(f.size / 1024).toFixed(2)} KB, tipo: ${f.type})`);
+            if (addedFiles.length > 0) {
+                console.log(`✅ ${addedFiles.length} arquivo(s) adicionado(s) ao email (total base64: ${(totalBase64Size / 1024).toFixed(2)} KB)`);
+                console.log('📧 Variáveis de imagem que serão enviadas:');
+                addedFiles.forEach(f => {
+                    const varName = f.fieldId + '_image';
+                    const varSize = (f.size / 1024).toFixed(2);
+                    console.log(`   - ${varName}: ${varSize} KB (primeiros 50 caracteres: ${f.base64.substring(0, 50)}...)`);
                 });
             }
-            if (skippedAttachments.length > 0) {
-                console.warn(`⚠️ ${skippedAttachments.length} anexo(s) não enviado(s) devido ao limite do EmailJS`);
+            if (skippedFiles.length > 0) {
+                console.warn(`⚠️ ${skippedFiles.length} arquivo(s) não enviado(s) devido ao limite do EmailJS`);
             }
             
             // Log final dos parâmetros que serão enviados
             console.log('📋 Parâmetros finais do EmailJS:', {
                 totalParams: Object.keys(companyTemplateParams).length,
-                attachmentParams: Object.keys(companyTemplateParams).filter(k => k.startsWith('attachment_')),
+                imageParams: Object.keys(companyTemplateParams).filter(k => k.includes('_image')),
                 estimatedSize: `${(estimatedTotalSize / 1024).toFixed(2)} KB`
             });
             
