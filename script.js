@@ -139,48 +139,11 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// EmailJS Configuration
-// 1. Acesse https://www.emailjs.com/ e crie uma conta (gratuito até 200 emails/mês)
-// 2. Configure um serviço de email (Gmail, Outlook, etc.)
-// 3. Crie DOIS templates de email:
-//    - Template 1: Para a empresa (novasolidum@gmail.com) com variáveis: {{user_name}}, {{user_email}}, {{user_phone}}, {{transaction_objective}}
-//    - Template 2: Confirmação para o usuário com variáveis: {{user_name}}
-// 4. Copie os Template IDs e cole abaixo
-// 5. Copie o Service ID e Public Key e cole abaixo
-
-// Configuração do Backend (para envio de emails com anexos reais)
-// IMPORTANTE: Substitua pela URL do seu backend hospedado no Vercel
-// Exemplo: 'https://seu-backend.vercel.app'
+// Configuração do Backend (envio de emails com anexos reais)
+// URL do backend hospedado no Vercel
 const BACKEND_CONFIG = {
-    enabled: true, // Mude para false para usar EmailJS
     url: 'https://back-end-nova.vercel.app/api/email/send' // URL do backend no Vercel
 };
-
-// Configuração do EmailJS (fallback se backend não estiver disponível)
-const EMAILJS_CONFIG = {
-    serviceID: 'service_pwkak2r',           // Cole aqui o Service ID
-    templateIDCompany: 'template_5pxvv6e',  // Cole aqui o Template ID para a empresa
-    templateIDUser: 'template_khtoh8k', // Cole aqui o Template ID para confirmação do usuário
-    publicKey: 'Caq5-K4DTuFAhXvkQ'          // Cole aqui a Public Key
-};
-
-// Initialize EmailJS when available
-function initEmailJS() {
-    if (typeof emailjs !== 'undefined') {
-        try {
-            emailjs.init(EMAILJS_CONFIG.publicKey);
-        } catch (error) {
-            console.error('EmailJS initialization error:', error);
-        }
-    }
-}
-
-// Wait for EmailJS to load
-if (typeof emailjs === 'undefined') {
-    window.addEventListener('load', initEmailJS);
-} else {
-    initEmailJS();
-}
 
 // Function to show message
 function showMessage(message, type) {
@@ -260,12 +223,10 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
     } catch (error) {
         console.error('❌ Erro ao enviar para backend:', error);
         
-        // Tentar fallback para EmailJS se backend falhar
-        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-            console.warn('⚠️ Backend não disponível. Tentando usar EmailJS como fallback...');
-            showMessage('Backend não disponível. Tentando método alternativo...', 'loading');
-            // Não fazer fallback automático, apenas mostrar erro
-            showMessage(`Erro ao conectar com o servidor. Verifique se o backend está rodando em ${BACKEND_CONFIG.url}. Erro: ${error.message}`, 'error');
+        // Detectar erro de CORS
+        if (error.message.includes('Failed to fetch') || error.message.includes('CORS') || error.message.includes('NetworkError')) {
+            console.error('🚫 Erro de CORS detectado. O backend precisa ser configurado para aceitar requisições do frontend.');
+            showMessage('Erro de CORS: O backend não está configurado para aceitar requisições deste domínio. Verifique a configuração de CORS no backend (variável FRONTEND_URL deve ser: https://www.novasolidumfinance.com.br).', 'error');
         } else {
             showMessage(`Erro ao enviar formulário: ${error.message}. Por favor, tente novamente ou entre em contato diretamente pelo email novasolidum@gmail.com`, 'error');
         }
@@ -368,7 +329,7 @@ function validateFile(file, maxSizeMB = 10, allowedTypes = ['image/jpeg', 'image
     return { valid: true };
 }
 
-// Validação de arquivo para email (máximo 10MB, mas EmailJS limita a 50KB total)
+// Validação de arquivo para upload (máximo 10MB)
 function validateFileForEmail(file, maxSizeKB = 10, allowedTypes = ['image/jpeg', 'image/png', 'application/pdf']) {
     if (!file) return { valid: false, error: 'Arquivo não selecionado' };
     
@@ -558,7 +519,7 @@ function blobToBase64(blob) {
     });
 }
 
-// Comprimir imagem para máximo de 15KB (boa qualidade, permite 3-4 imagens no limite de 50KB)
+// Comprimir imagem usando Tinify (melhor qualidade)
 async function compressImage(file, maxSizeKB = 15) {
     // Tentar Tinify primeiro se estiver habilitado
     if (TINIFY_CONFIG.enabled && TINIFY_CONFIG.apiKey && TINIFY_CONFIG.apiKey !== 'YOUR_TINIFY_API_KEY') {
@@ -1041,7 +1002,7 @@ if (cnpjInput) {
     });
 }
 
-// Validação de arquivos (tamanho máximo 10MB para upload, tentará enviar até 10MB por email, respeitando limite de 50KB do EmailJS)
+// Validação de arquivos (tamanho máximo 10MB para upload)
 const fileInputs = document.querySelectorAll('input[type="file"]');
 fileInputs.forEach(input => {
     input.addEventListener('change', (e) => {
@@ -1169,25 +1130,6 @@ if (registerForm) {
         submitBtn.disabled = true;
         submitBtn.textContent = 'Enviando...';
         
-        // Check if EmailJS is configured
-        if (EMAILJS_CONFIG.serviceID === 'YOUR_SERVICE_ID' || 
-            EMAILJS_CONFIG.templateIDCompany === 'YOUR_TEMPLATE_ID' || 
-            EMAILJS_CONFIG.templateIDUser === 'template_user_confirm' ||
-            EMAILJS_CONFIG.publicKey === 'YOUR_PUBLIC_KEY') {
-            showMessage('EmailJS não configurado. Por favor, configure as credenciais no arquivo script.js ou entre em contato diretamente: novasolidum@gmail.com', 'error');
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Enviar';
-            return;
-        }
-        
-        // Check if EmailJS is available
-        if (typeof emailjs === 'undefined') {
-            showMessage('Serviço de email não disponível. Por favor, entre em contato diretamente: novasolidum@gmail.com', 'error');
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Enviar';
-            return;
-        }
-        
         try {
             // Coletar dados do formulário
             let formData = {
@@ -1269,462 +1211,8 @@ if (registerForm) {
                 };
             }
             
-            // Verificar se deve usar backend ou EmailJS
-            if (BACKEND_CONFIG.enabled) {
-                // Usar backend para envio com anexos reais
-                await sendFormToBackend(formData, accountType, submitBtn);
-                return;
-            }
-            
-            // Fallback: Processar arquivos para EmailJS (base64 embutido)
-            // Nota: EmailJS tem limite de 50KB total, então arquivos grandes podem não ser enviados
-            const MAX_FILE_SIZE_FOR_EMAIL = 10 * 1024 * 1024; // 10MB em bytes
-            const fileFields = accountType === 'PF'
-                ? ['documentFront', 'documentBack', 'selfie', 'proofOfAddress']
-                : ['articlesOfAssociation', 'cnpjCard', 'adminIdFront', 'adminIdBack', 'companyProofOfAddress', 'ecnpjCertificate'];
-            
-            for (const fieldId of fileFields) {
-                const input = document.getElementById(fieldId);
-                if (input && input.files.length > 0) {
-                    const file = input.files[0];
-                    formData[fieldId + '_name'] = file.name;
-                    formData[fieldId + '_type'] = file.type;
-                    formData[fieldId + '_size'] = file.size;
-                    formData[fieldId + '_size_kb'] = (file.size / 1024).toFixed(2) + ' KB';
-                    
-                    // Se arquivo <= 10MB, tentar comprimir e converter para base64
-                    if (file.size <= MAX_FILE_SIZE_FOR_EMAIL) {
-                        try {
-                            // Comprimir imagem para máximo de 15KB (boa qualidade, permite 3-4 imagens no email)
-                            if (file.type.startsWith('image/')) {
-                                formData[fieldId + '_base64'] = await compressImage(file, 15);
-                                const compressedSize = new Blob([formData[fieldId + '_base64']]).size / 1024;
-                                formData[fieldId + '_sent'] = true;
-                                formData[fieldId + '_note'] = `Imagem comprimida para ${compressedSize.toFixed(2)} KB (máx. 15 KB, boa qualidade)`;
-                                console.log(`✅ ${fieldId}: ${(file.size / 1024).toFixed(2)} KB → ${compressedSize.toFixed(2)} KB`);
-                            } else {
-                                // Para PDFs e outros, usar método original (mas pode não caber no email)
-                                formData[fieldId + '_base64'] = await fileToBase64(file);
-                                const base64Size = new Blob([formData[fieldId + '_base64']]).size / 1024;
-                                formData[fieldId + '_sent'] = true;
-                                if (base64Size > 15) {
-                                    formData[fieldId + '_note'] = `Arquivo PDF (${base64Size.toFixed(2)} KB) - pode não ser enviado por email devido ao limite de 15KB`;
-                                } else {
-                                    formData[fieldId + '_note'] = `Arquivo convertido (${base64Size.toFixed(2)} KB)`;
-                                }
-                            }
-                        } catch (error) {
-                            console.error(`Erro ao processar ${fieldId}:`, error);
-                            formData[fieldId + '_sent'] = false;
-                            formData[fieldId + '_note'] = 'Erro ao processar arquivo';
-                        }
-                    } else {
-                        formData[fieldId + '_sent'] = false;
-                        const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-                        formData[fieldId + '_note'] = `Arquivo muito grande (${sizeMB} MB). Máximo permitido: 10 MB.`;
-                    }
-                }
-            }
-            
-            // Template parameters for EmailJS - Email to Nova Solidum (empresa)
-            const fileFieldsForTemplate = accountType === 'PF'
-                ? ['documentFront', 'documentBack', 'selfie', 'proofOfAddress']
-                : ['articlesOfAssociation', 'cnpjCard', 'adminIdFront', 'adminIdBack', 'companyProofOfAddress'];
-            
-            // Criar objeto sem base64 para não duplicar dados
-            const formDataWithoutBase64 = JSON.parse(JSON.stringify(formData));
-            fileFieldsForTemplate.forEach(fieldId => {
-                if (formDataWithoutBase64[fieldId + '_base64']) {
-                    delete formDataWithoutBase64[fieldId + '_base64'];
-                }
-            });
-            
-            const companyTemplateParams = {
-                to_email: 'novasolidum@gmail.com',
-                subject: `Novo Registro ${accountType} - Nova Solidum Finances`,
-                account_type: accountType,
-                reply_to: accountType === 'PF' ? formData.email : formData.companyEmail
-            };
-            
-            // Adicionar campos específicos APENAS se tiverem valor
-            if (accountType === 'PF') {
-                if (formData.fullName) companyTemplateParams.user_name = formData.fullName;
-                if (formData.email) companyTemplateParams.user_email = formData.email;
-                if (formData.phone) companyTemplateParams.user_phone = formData.phone;
-                if (formData.cpf) {
-                    companyTemplateParams.user_cpf = formData.cpf;
-                } else {
-                    companyTemplateParams.user_cpf = 'Não informado';
-                }
-                companyTemplateParams.is_foreigner = formData.isForeigner ? 'Sim' : 'Não';
-                
-                // Adicionar dados adicionais apenas se preenchidos
-                if (formData.rg) {
-                    companyTemplateParams.user_rg = formData.rg;
-                    companyTemplateParams.has_user_rg = 'SIM';
-                }
-                if (formData.cnh) {
-                    companyTemplateParams.user_cnh = formData.cnh;
-                    companyTemplateParams.has_user_cnh = 'SIM';
-                }
-                if (formData.birthDate) {
-                    companyTemplateParams.user_birthDate = formData.birthDate;
-                    companyTemplateParams.has_user_birthDate = 'SIM';
-                }
-                if (formData.pepStatus) {
-                    companyTemplateParams.user_pep = 'Sim';
-                    companyTemplateParams.has_user_pep = 'SIM';
-                    if (formData.pepPosition) {
-                        companyTemplateParams.user_pep_position = formData.pepPosition;
-                        companyTemplateParams.has_user_pep_position = 'SIM';
-                    }
-                }
-                
-                // Endereço
-                if (formData.address) {
-                    let hasAddress = false;
-                    if (formData.address.isForeign) {
-                        // Endereço estrangeiro
-                        if (formData.address.street) {
-                            companyTemplateParams.address_street = formData.address.street;
-                            hasAddress = true;
-                        }
-                        if (formData.address.number) {
-                            companyTemplateParams.address_number = formData.address.number;
-                            hasAddress = true;
-                        }
-                        if (formData.address.complement) {
-                            companyTemplateParams.address_complement = formData.address.complement;
-                            hasAddress = true;
-                        }
-                        if (formData.address.district) {
-                            companyTemplateParams.address_district = formData.address.district;
-                            hasAddress = true;
-                        }
-                        if (formData.address.city) {
-                            companyTemplateParams.address_city = formData.address.city;
-                            hasAddress = true;
-                        }
-                        if (formData.address.state) {
-                            companyTemplateParams.address_state = formData.address.state;
-                            hasAddress = true;
-                        }
-                        if (formData.address.zipCode) {
-                            companyTemplateParams.address_zipCode = formData.address.zipCode;
-                            hasAddress = true;
-                        }
-                        if (formData.address.country) {
-                            companyTemplateParams.address_country = formData.address.country;
-                            hasAddress = true;
-                        }
-                        if (hasAddress) {
-                            companyTemplateParams.address_type = 'Estrangeiro';
-                            companyTemplateParams.has_address = 'SIM';
-                        }
-                    } else {
-                        // Endereço brasileiro
-                        if (formData.address.cep) {
-                            companyTemplateParams.address_cep = formData.address.cep;
-                            hasAddress = true;
-                        }
-                        if (formData.address.street) {
-                            companyTemplateParams.address_street = formData.address.street;
-                            hasAddress = true;
-                        }
-                        if (formData.address.number) {
-                            companyTemplateParams.address_number = formData.address.number;
-                            hasAddress = true;
-                        }
-                        if (formData.address.complement) {
-                            companyTemplateParams.address_complement = formData.address.complement;
-                            hasAddress = true;
-                        }
-                        if (formData.address.district) {
-                            companyTemplateParams.address_district = formData.address.district;
-                            hasAddress = true;
-                        }
-                        if (formData.address.city) {
-                            companyTemplateParams.address_city = formData.address.city;
-                            hasAddress = true;
-                        }
-                        if (formData.address.state) {
-                            companyTemplateParams.address_state = formData.address.state;
-                            hasAddress = true;
-                        }
-                        if (hasAddress) {
-                            companyTemplateParams.address_type = 'Brasileiro';
-                            companyTemplateParams.has_address = 'SIM';
-                        }
-                    }
-                }
-            } else {
-                if (formData.companyName) {
-                    companyTemplateParams.company_name = formData.companyName;
-                    companyTemplateParams.has_company_name = 'SIM';
-                }
-                if (formData.tradeName) {
-                    companyTemplateParams.company_tradeName = formData.tradeName;
-                    companyTemplateParams.has_company_tradeName = 'SIM';
-                }
-                if (formData.companyEmail) {
-                    companyTemplateParams.company_email = formData.companyEmail;
-                    companyTemplateParams.has_company_email = 'SIM';
-                }
-                if (formData.companyPhone) {
-                    companyTemplateParams.company_phone = formData.companyPhone;
-                    companyTemplateParams.has_company_phone = 'SIM';
-                }
-                if (formData.cnpj) {
-                    companyTemplateParams.company_cnpj = formData.cnpj;
-                    companyTemplateParams.has_company_cnpj = 'SIM';
-                }
-                if (formData.foundationDate) {
-                    companyTemplateParams.company_foundationDate = formData.foundationDate;
-                    companyTemplateParams.has_company_foundationDate = 'SIM';
-                }
-                if (formData.mainCNAE) {
-                    companyTemplateParams.company_mainCNAE = formData.mainCNAE;
-                    companyTemplateParams.has_company_mainCNAE = 'SIM';
-                }
-                if (formData.legalNature) {
-                    companyTemplateParams.company_legalNature = formData.legalNature;
-                    companyTemplateParams.has_company_legalNature = 'SIM';
-                }
-                
-                // Endereço PJ
-                if (formData.address) {
-                    let hasAddress = false;
-                    if (formData.address.cep) {
-                        companyTemplateParams.address_cep = formData.address.cep;
-                        hasAddress = true;
-                    }
-                    if (formData.address.street) {
-                        companyTemplateParams.address_street = formData.address.street;
-                        hasAddress = true;
-                    }
-                    if (formData.address.number) {
-                        companyTemplateParams.address_number = formData.address.number;
-                        hasAddress = true;
-                    }
-                    if (formData.address.complement) {
-                        companyTemplateParams.address_complement = formData.address.complement;
-                        hasAddress = true;
-                    }
-                    if (formData.address.district) {
-                        companyTemplateParams.address_district = formData.address.district;
-                        hasAddress = true;
-                    }
-                    if (formData.address.city) {
-                        companyTemplateParams.address_city = formData.address.city;
-                        hasAddress = true;
-                    }
-                    if (formData.address.state) {
-                        companyTemplateParams.address_state = formData.address.state;
-                        hasAddress = true;
-                    }
-                    if (hasAddress) {
-                        companyTemplateParams.has_address = 'SIM';
-                    }
-                }
-                
-                // Administrador
-                if (formData.majorityAdmin) {
-                    let hasAdmin = false;
-                    if (formData.majorityAdmin.name) {
-                        companyTemplateParams.admin_name = formData.majorityAdmin.name;
-                        hasAdmin = true;
-                    }
-                    if (formData.majorityAdmin.cpf) {
-                        companyTemplateParams.admin_cpf = formData.majorityAdmin.cpf;
-                        hasAdmin = true;
-                    }
-                    if (formData.majorityAdmin.email) {
-                        companyTemplateParams.admin_email = formData.majorityAdmin.email;
-                        hasAdmin = true;
-                    }
-                    if (formData.majorityAdmin.phone) {
-                        companyTemplateParams.admin_phone = formData.majorityAdmin.phone;
-                        hasAdmin = true;
-                    }
-                    if (hasAdmin) {
-                        companyTemplateParams.has_admin = 'SIM';
-                    }
-                }
-            }
-            
-            // Flag para indicar se há documentos
-            const hasDocuments = fileFieldsForTemplate.some(fieldId => companyTemplateParams['has_' + fieldId] === 'SIM');
-            if (hasDocuments) {
-                companyTemplateParams.has_documents = 'SIM';
-            }
-            
-            // Adicionar arquivos base64 comprimidos aos parâmetros do template
-            // EmailJS tem limite de 50KB total, imagens comprimidas para máximo 15KB cada (boa qualidade)
-            // Estratégia: enviar TODAS as imagens possíveis (3-4 imagens de ~12-15KB cada)
-            const EMAILJS_MAX_SIZE = 50 * 1024; // 50KB limite do EmailJS
-            const SAFE_SIZE = 45 * 1024; // 45KB para margem de segurança (permite 3-4 imagens de ~12-15KB cada)
-            
-            // Coletar todos os arquivos com base64 e calcular tamanho real
-            const filesWithBase64 = [];
-            for (const fieldId of fileFieldsForTemplate) {
-                if (formData[fieldId + '_base64']) {
-                    const base64 = formData[fieldId + '_base64'];
-                    // Tamanho da string base64 em bytes
-                    const base64Size = new Blob([base64]).size;
-                    filesWithBase64.push({
-                        fieldId: fieldId,
-                        base64: base64,
-                        size: base64Size, // Tamanho em bytes
-                        name: formData[fieldId + '_name'] || 'arquivo'
-                    });
-                }
-            }
-            
-            // Estratégia: tentar enviar TODAS as imagens, priorizando imagens sobre form_data
-            // Ordenar por tamanho (menores primeiro) para maximizar número de imagens
-            filesWithBase64.sort((a, b) => a.size - b.size);
-            
-            // Adicionar TODAS as imagens primeiro (sem form_data)
-            let totalBase64Size = 0;
-            const addedFiles = [];
-            const skippedFiles = [];
-            
-            // Adicionar todas as imagens possíveis
-            for (const file of filesWithBase64) {
-                // Calcular tamanho se adicionarmos este arquivo (sem form_data ainda)
-                const testParams = JSON.parse(JSON.stringify(companyTemplateParams));
-                addedFiles.forEach(f => {
-                    testParams[f.fieldId + '_image'] = f.base64;
-                    testParams[f.fieldId + '_name'] = f.name;
-                });
-                testParams[file.fieldId + '_image'] = file.base64;
-                testParams[file.fieldId + '_name'] = file.name;
-                
-                // Calcular tamanho total estimado (sem form_data)
-                const testParamsSize = new Blob([JSON.stringify(testParams)]).size;
-                
-                // Verificar se cabe no limite total (priorizando imagens)
-                if (testParamsSize <= EMAILJS_MAX_SIZE) {
-                    // Cabe, adicionar
-                    companyTemplateParams[file.fieldId + '_image'] = file.base64;
-                    companyTemplateParams[file.fieldId + '_name'] = file.name;
-                    companyTemplateParams['has_' + file.fieldId] = 'SIM'; // Flag para mostrar no template
-                    totalBase64Size += file.size;
-                    addedFiles.push(file);
-                    console.log(`✅ Adicionando ${file.fieldId}_image (${(file.size / 1024).toFixed(2)} KB)`);
-                } else {
-                    // Não cabe, pular
-                    skippedFiles.push(file);
-                    if (formData[file.fieldId + '_sent'] !== false) {
-                        formData[file.fieldId + '_sent'] = false;
-                    }
-                    if (formData[file.fieldId + '_note']) {
-                        formData[file.fieldId + '_note'] += ` Não enviado por email (limite de 50KB total do EmailJS).`;
-                    } else {
-                        formData[file.fieldId + '_note'] = `Não enviado por email (limite de 50KB total do EmailJS).`;
-                    }
-                    console.warn(`⚠️ Pulando ${file.fieldId}_image (${(file.size / 1024).toFixed(2)} KB) - excederia limite`);
-                }
-            }
-            
-            // Calcular tamanho final com todas as imagens adicionadas
-            const finalParamsSize = new Blob([JSON.stringify(companyTemplateParams)]).size;
-            const formDataJsonSize = new Blob([JSON.stringify(formDataWithoutBase64, null, 2)]).size;
-            const estimatedTotalSize = finalParamsSize + formDataJsonSize;
-            
-            // Tentar adicionar form_data se ainda houver espaço
-            if (estimatedTotalSize <= EMAILJS_MAX_SIZE) {
-                // Tamanho OK, pode enviar form_data também
-                companyTemplateParams.form_data = JSON.stringify(formDataWithoutBase64, null, 2);
-                if (addedFiles.length === filesWithBase64.length) {
-                    companyTemplateParams.form_data_note = `✅ Todas as ${addedFiles.length} imagem(ns) enviada(s) com sucesso!`;
-                } else {
-                    companyTemplateParams.form_data_note = `${addedFiles.length} imagem(ns) enviada(s). ${skippedFiles.length} não enviada(s) devido ao limite.`;
-                }
-            } else {
-                // Não cabe form_data, mas mantém todas as imagens
-                console.log(`ℹ️ Removendo form_data para manter todas as ${addedFiles.length} imagem(ns) enviadas`);
-                companyTemplateParams.form_data_note = `✅ Todas as ${addedFiles.length} imagem(ns) enviada(s)! Dados completos não enviados para economizar espaço (limite de 50KB).`;
-            }
-            
-            // Log para debug
-            if (addedFiles.length > 0) {
-                console.log(`✅ ${addedFiles.length} arquivo(s) adicionado(s) ao email (total base64: ${(totalBase64Size / 1024).toFixed(2)} KB)`);
-                console.log('📧 Variáveis de imagem que serão enviadas:');
-                addedFiles.forEach(f => {
-                    const varName = f.fieldId + '_image';
-                    const varSize = (f.size / 1024).toFixed(2);
-                    console.log(`   - ${varName}: ${varSize} KB (primeiros 50 caracteres: ${f.base64.substring(0, 50)}...)`);
-                });
-            }
-            if (skippedFiles.length > 0) {
-                console.warn(`⚠️ ${skippedFiles.length} arquivo(s) não enviado(s) devido ao limite do EmailJS`);
-            }
-            
-            // Log final dos parâmetros que serão enviados
-            console.log('📋 Parâmetros finais do EmailJS:', {
-                totalParams: Object.keys(companyTemplateParams).length,
-                imageParams: Object.keys(companyTemplateParams).filter(k => k.includes('_image')),
-                estimatedSize: `${(estimatedTotalSize / 1024).toFixed(2)} KB`
-            });
-            
-            
-            // Template parameters for EmailJS - Confirmation email to user
-            const userEmail = accountType === 'PF' ? formData.email : formData.companyEmail;
-            const userName = accountType === 'PF' ? formData.fullName : formData.companyName;
-            
-            const userTemplateParams = {
-                to_email: userEmail,
-                to_name: userName,
-                user_name: userName,
-                subject: 'Registro Confirmado - Nova Solidum Finances'
-            };
-            
-            // Log final antes de enviar
-            console.log('📤 Enviando email com os seguintes parâmetros:');
-            console.log('   - Total de parâmetros:', Object.keys(companyTemplateParams).length);
-            console.log('   - Parâmetros de imagem:', Object.keys(companyTemplateParams).filter(k => k.endsWith('_image')));
-            console.log('   - Tamanho estimado:', `${(estimatedTotalSize / 1024).toFixed(2)} KB`);
-            
-            // Send email to Nova Solidum (empresa)
-            try {
-                const emailResult = await emailjs.send(
-                    EMAILJS_CONFIG.serviceID,
-                    EMAILJS_CONFIG.templateIDCompany,
-                    companyTemplateParams
-                );
-                console.log('✅ Email enviado com sucesso!', emailResult);
-            } catch (emailError) {
-                console.error('❌ Erro ao enviar email:', emailError);
-                throw emailError;
-            }
-            
-            // Send confirmation email to user
-            await emailjs.send(
-                EMAILJS_CONFIG.serviceID,
-                EMAILJS_CONFIG.templateIDUser,
-                userTemplateParams
-            );
-            
-            // Show success message
-            showMessage('Formulário enviado com sucesso! Verifique seu email para confirmação. Entraremos em contato em breve.', 'success');
-            
-            // Reset form after 3 seconds
-            setTimeout(() => {
-                registerForm.reset();
-                closeModal();
-            }, 3000);
-            
-        } catch (error) {
-            console.error('EmailJS Error:', error);
-            let errorMessage = 'Erro ao enviar formulário. ';
-            
-            if (error.text) {
-                errorMessage += `Detalhes: ${error.text}. `;
-            }
-            
-            errorMessage += 'Por favor, tente novamente ou entre em contato diretamente pelo email novasolidum@gmail.com';
-            showMessage(errorMessage, 'error');
+            // Enviar formulário para o backend
+            await sendFormToBackend(formData, accountType, submitBtn);
         } finally {
             // Re-enable submit button
             submitBtn.disabled = false;
