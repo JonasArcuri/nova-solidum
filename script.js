@@ -148,15 +148,7 @@ document.addEventListener('keydown', (e) => {
 // 4. Copie os Template IDs e cole abaixo
 // 5. Copie o Service ID e Public Key e cole abaixo
 
-// Configuração do Backend (para envio de emails com anexos reais)
-// IMPORTANTE: Substitua pela URL do seu backend hospedado no Vercel
-// Exemplo: 'https://seu-backend.vercel.app'
-const BACKEND_CONFIG = {
-    enabled: true, // Mude para false para usar EmailJS
-    url: 'https://seu-backend.vercel.app/api/email/send' // URL do backend no Vercel
-};
-
-// Configuração do EmailJS (fallback se backend não estiver disponível)
+// EmailJS Configuration
 const EMAILJS_CONFIG = {
     serviceID: 'service_pwkak2r',           // Cole aqui o Service ID
     templateIDCompany: 'template_5pxvv6e',  // Cole aqui o Template ID para a empresa
@@ -189,75 +181,6 @@ function showMessage(message, type) {
     
     // Scroll to message
     formMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-
-// Função para enviar formulário para o backend
-async function sendFormToBackend(formData, accountType, submitBtn) {
-    try {
-        // Criar FormData para enviar arquivos
-        const formDataToSend = new FormData();
-        
-        // Adicionar dados do formulário como JSON
-        formDataToSend.append('formData', JSON.stringify(formData));
-        
-        // Adicionar arquivos
-        const fileFields = accountType === 'PF'
-            ? ['documentFront', 'documentBack', 'selfie', 'proofOfAddress']
-            : ['articlesOfAssociation', 'cnpjCard', 'adminIdFront', 'adminIdBack', 'companyProofOfAddress', 'ecnpjCertificate'];
-        
-        let filesCount = 0;
-        for (const fieldId of fileFields) {
-            const input = document.getElementById(fieldId);
-            if (input && input.files.length > 0) {
-                const file = input.files[0];
-                formDataToSend.append(fieldId, file);
-                filesCount++;
-                console.log(`📎 Adicionando arquivo: ${fieldId} - ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
-            }
-        }
-        
-        console.log(`📤 Enviando formulário para backend: ${filesCount} arquivo(s) anexado(s)`);
-        
-        // Enviar para o backend
-        const response = await fetch(BACKEND_CONFIG.url, {
-            method: 'POST',
-            body: formDataToSend
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
-            throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`);
-        }
-        
-        const result = await response.json();
-        console.log('✅ Email enviado com sucesso!', result);
-        
-        // Show success message
-        showMessage(`Formulário enviado com sucesso! ${result.attachmentsCount || filesCount} anexo(s) enviado(s). Verifique seu email para confirmação. Entraremos em contato em breve.`, 'success');
-        
-        // Reset form after 3 seconds
-        setTimeout(() => {
-            registerForm.reset();
-            closeModal();
-        }, 3000);
-        
-    } catch (error) {
-        console.error('❌ Erro ao enviar para backend:', error);
-        
-        // Tentar fallback para EmailJS se backend falhar
-        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-            console.warn('⚠️ Backend não disponível. Tentando usar EmailJS como fallback...');
-            showMessage('Backend não disponível. Tentando método alternativo...', 'loading');
-            // Não fazer fallback automático, apenas mostrar erro
-            showMessage(`Erro ao conectar com o servidor. Verifique se o backend está rodando em ${BACKEND_CONFIG.url}. Erro: ${error.message}`, 'error');
-        } else {
-            showMessage(`Erro ao enviar formulário: ${error.message}. Por favor, tente novamente ou entre em contato diretamente pelo email novasolidum@gmail.com`, 'error');
-        }
-    } finally {
-        // Re-enable submit button
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Enviar';
-    }
 }
 
 
@@ -382,12 +305,10 @@ function fileToBase64(file) {
 // Obtenha sua API key em: https://tinypng.com/developers
 // Gratuito até 500 compressions/mês
 const TINIFY_CONFIG = {
-    enabled: true, // Mude para true após configurar o backend
+    enabled: false, // Desabilitado - usando compressão local
     apiKey: 'rG1y8sHgfYxFZfsc3g9prpxFjWS7YHfx', // Mantido para referência
     apiUrl: 'https://api.tinify.com/shrink',
-    // IMPORTANTE: Substitua pela URL do seu backend hospedado no Vercel
-    // Exemplo: 'https://seu-backend.vercel.app/api/tinify/compress'
-    backendUrl: 'https://seu-backend.vercel.app/api/tinify/compress' // URL do backend proxy no Vercel
+    backendUrl: '' // Não usado - compressão local apenas
 };
 
 // Comprimir imagem usando Tinify (melhor qualidade)
@@ -1253,14 +1174,7 @@ if (registerForm) {
                 };
             }
             
-            // Verificar se deve usar backend ou EmailJS
-            if (BACKEND_CONFIG.enabled) {
-                // Usar backend para envio com anexos reais
-                await sendFormToBackend(formData, accountType, submitBtn);
-                return;
-            }
-            
-            // Fallback: Processar arquivos para EmailJS (base64 embutido)
+            // Processar arquivos: tentar enviar como base64 se <= 10MB
             // Nota: EmailJS tem limite de 50KB total, então arquivos grandes podem não ser enviados
             const MAX_FILE_SIZE_FOR_EMAIL = 10 * 1024 * 1024; // 10MB em bytes
             const fileFields = accountType === 'PF'
