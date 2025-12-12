@@ -48,8 +48,38 @@
                                 </tr>
                                 <tr>
                                     <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Nome Fantasia:</span>
+                                        <span style="color: #1a2744; font-size: 14px;">{{company_tradeName}}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
                                         <span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">CPF/CNPJ:</span>
                                         <span style="color: #1a2744; font-size: 14px;">{{user_cpf}}{{company_cnpj}}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">RG:</span>
+                                        <span style="color: #1a2744; font-size: 14px;">{{user_rg}}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">CNH:</span>
+                                        <span style="color: #1a2744; font-size: 14px;">{{user_cnh}}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Data de Nascimento:</span>
+                                        <span style="color: #1a2744; font-size: 14px;">{{user_birthDate}}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Estrangeiro:</span>
+                                        <span style="color: #1a2744; font-size: 14px;">{{is_foreigner}}</span>
                                     </td>
                                 </tr>
                                 <tr>
@@ -64,74 +94,209 @@
                                         <span style="color: #1a2744; font-size: 14px;">{{user_phone}}{{company_phone}}</span>
                                     </td>
                                 </tr>
+                                <tr>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">PEP:</span>
+                                        <span style="color: #1a2744; font-size: 14px;">{{user_pep}} {{user_pep_position}}</span>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <!-- Address Section -->
+                            <h2 style="margin: 40px 0 20px 0; color: #1a2744; font-size: 18px; font-weight: 600; border-bottom: 2px solid #dc2626; padding-bottom: 10px;">Endereço</h2>
+                            
+                            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 30px;">
+                                <tr>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Tipo:</span>
+                                        <span style="color: #1a2744; font-size: 14px;">{{address_type}}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">CEP:</span>
+                                        <span style="color: #1a2744; font-size: 14px;">{{address_cep}}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Logradouro:</span>
+                                        <span style="color: #1a2744; font-size: 14px;">{{address_street}}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Número:</span>
+                                        <span style="color: #1a2744; font-size: 14px;">{{address_number}}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Complemento:</span>
+                                        <span style="color: #1a2744; font-size: 14px;">{{address_complement}}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Bairro:</span>
+                                        <span style="color: #1a2744; font-size: 14px;">{{address_district}}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Cidade:</span>
+                                        <span style="color: #1a2744; font-size: 14px;">{{address_city}}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Estado/UF:</span>
+                                        <span style="color: #1a2744; font-size: 14px;">{{address_state}}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">CEP/Código Postal:</span>
+                                        <span style="color: #1a2744; font-size: 14px;">{{address_zipCode}}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">País:</span>
+                                        <span style="color: #1a2744; font-size: 14px;">{{address_country}}</span>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <!-- Admin Section (PJ) -->
+                            <h2 style="margin: 40px 0 20px 0; color: #1a2744; font-size: 18px; font-weight: 600; border-bottom: 2px solid #dc2626; padding-bottom: 10px;">Administrador/Representante Legal</h2>
+                            
+                            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 30px;">
+                                <tr>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Nome:</span>
+                                        <span style="color: #1a2744; font-size: 14px;">{{admin_name}}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">CPF:</span>
+                                        <span style="color: #1a2744; font-size: 14px;">{{admin_cpf}}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Email:</span>
+                                        <span style="color: #1a2744; font-size: 14px;">{{admin_email}}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Telefone:</span>
+                                        <span style="color: #1a2744; font-size: 14px;">{{admin_phone}}</span>
+                                    </td>
+                                </tr>
                             </table>
                             
                             <!-- Documents Section -->
                             <h2 style="margin: 40px 0 20px 0; color: #1a2744; font-size: 18px; font-weight: 600; border-bottom: 2px solid #dc2626; padding-bottom: 10px;">Documentos Enviados</h2>
-                            <p style="margin: 0 0 20px 0; color: #6b7280; font-size: 13px; font-style: italic;">Apenas arquivos até 10KB são enviados como imagem</p>
+                            <p style="margin: 0 0 20px 0; color: #6b7280; font-size: 13px; font-style: italic;">Imagens comprimidas automaticamente para até 15KB cada (boa qualidade)</p>
                             
-                            <!-- Document Front -->
-                            <div style="margin-bottom: 30px; padding: 20px; background-color: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
-                                <p style="margin: 0 0 15px 0; color: #1a2744; font-size: 15px; font-weight: 600;">
-                                    📄 RG/CNH - Frente: {{documentFront_name}}
-                                </p>
-                                <img src="{{documentFront_image}}" alt="RG/CNH Frente" style="max-width: 100%; height: auto; border: 2px solid #dc2626; border-radius: 4px; display: block; margin: 0 auto;">
-                            </div>
+                            <!-- Document Front (PF) -->
+                            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 30px; background-color: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                                <tr>
+                                    <td style="padding: 20px;">
+                                        <p style="margin: 0 0 15px 0; color: #1a2744; font-size: 15px; font-weight: 600;">
+                                            📄 RG/CNH - Frente: {{documentFront_name}}
+                                        </p>
+                                        <img src="{{documentFront_image}}" alt="RG/CNH Frente" style="max-width: 100%; height: auto; border: 2px solid #dc2626; border-radius: 4px; display: block; margin: 0 auto;">
+                                    </td>
+                                </tr>
+                            </table>
                             
-                            <!-- Document Back -->
-                            <div style="margin-bottom: 30px; padding: 20px; background-color: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
-                                <p style="margin: 0 0 15px 0; color: #1a2744; font-size: 15px; font-weight: 600;">
-                                    📄 RG/CNH - Verso: {{documentBack_name}}
-                                </p>
-                                <img src="{{documentBack_image}}" alt="RG/CNH Verso" style="max-width: 100%; height: auto; border: 2px solid #dc2626; border-radius: 4px; display: block; margin: 0 auto;">
-                            </div>
+                            <!-- Document Back (PF) -->
+                            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 30px; background-color: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                                <tr>
+                                    <td style="padding: 20px;">
+                                        <p style="margin: 0 0 15px 0; color: #1a2744; font-size: 15px; font-weight: 600;">
+                                            📄 RG/CNH - Verso: {{documentBack_name}}
+                                        </p>
+                                        <img src="{{documentBack_image}}" alt="RG/CNH Verso" style="max-width: 100%; height: auto; border: 2px solid #dc2626; border-radius: 4px; display: block; margin: 0 auto;">
+                                    </td>
+                                </tr>
+                            </table>
                             
-                            <!-- Selfie -->
-                            <div style="margin-bottom: 30px; padding: 20px; background-color: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
-                                <p style="margin: 0 0 15px 0; color: #1a2744; font-size: 15px; font-weight: 600;">
-                                    📸 Selfie: {{selfie_name}}
-                                </p>
-                                <img src="{{selfie_image}}" alt="Selfie" style="max-width: 100%; height: auto; border: 2px solid #dc2626; border-radius: 4px; display: block; margin: 0 auto;">
-                            </div>
+                            <!-- Selfie (PF - Opcional) -->
+                            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 30px; background-color: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                                <tr>
+                                    <td style="padding: 20px;">
+                                        <p style="margin: 0 0 15px 0; color: #1a2744; font-size: 15px; font-weight: 600;">
+                                            📸 Selfie: {{selfie_name}}
+                                        </p>
+                                        <img src="{{selfie_image}}" alt="Selfie" style="max-width: 100%; height: auto; border: 2px solid #dc2626; border-radius: 4px; display: block; margin: 0 auto;">
+                                    </td>
+                                </tr>
+                            </table>
                             
-                            <!-- Proof of Address -->
-                            <div style="margin-bottom: 30px; padding: 20px; background-color: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
-                                <p style="margin: 0 0 15px 0; color: #1a2744; font-size: 15px; font-weight: 600;">
-                                    📄 Comprovante de Endereço: {{proofOfAddress_name}}
-                                </p>
-                                <img src="{{proofOfAddress_image}}" alt="Comprovante" style="max-width: 100%; height: auto; border: 2px solid #dc2626; border-radius: 4px; display: block; margin: 0 auto;">
-                            </div>
+                            <!-- Proof of Address (PF) -->
+                            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 30px; background-color: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                                <tr>
+                                    <td style="padding: 20px;">
+                                        <p style="margin: 0 0 15px 0; color: #1a2744; font-size: 15px; font-weight: 600;">
+                                            📄 Comprovante de Endereço: {{proofOfAddress_name}}
+                                        </p>
+                                        <img src="{{proofOfAddress_image}}" alt="Comprovante" style="max-width: 100%; height: auto; border: 2px solid #dc2626; border-radius: 4px; display: block; margin: 0 auto;">
+                                    </td>
+                                </tr>
+                            </table>
                             
-                            <!-- Admin ID Front -->
-                            <div style="margin-bottom: 30px; padding: 20px; background-color: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
-                                <p style="margin: 0 0 15px 0; color: #1a2744; font-size: 15px; font-weight: 600;">
-                                    📄 RG/CNH Admin - Frente: {{adminIdFront_name}}
-                                </p>
-                                <img src="{{adminIdFront_image}}" alt="Admin Frente" style="max-width: 100%; height: auto; border: 2px solid #dc2626; border-radius: 4px; display: block; margin: 0 auto;">
-                            </div>
+                            <!-- Admin ID Front (PJ) -->
+                            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 30px; background-color: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                                <tr>
+                                    <td style="padding: 20px;">
+                                        <p style="margin: 0 0 15px 0; color: #1a2744; font-size: 15px; font-weight: 600;">
+                                            📄 RG/CNH Admin - Frente: {{adminIdFront_name}}
+                                        </p>
+                                        <img src="{{adminIdFront_image}}" alt="Admin Frente" style="max-width: 100%; height: auto; border: 2px solid #dc2626; border-radius: 4px; display: block; margin: 0 auto;">
+                                    </td>
+                                </tr>
+                            </table>
                             
-                            <!-- Admin ID Back -->
-                            <div style="margin-bottom: 30px; padding: 20px; background-color: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
-                                <p style="margin: 0 0 15px 0; color: #1a2744; font-size: 15px; font-weight: 600;">
-                                    📄 RG/CNH Admin - Verso: {{adminIdBack_name}}
-                                </p>
-                                <img src="{{adminIdBack_image}}" alt="Admin Verso" style="max-width: 100%; height: auto; border: 2px solid #dc2626; border-radius: 4px; display: block; margin: 0 auto;">
-                            </div>
+                            <!-- Admin ID Back (PJ) -->
+                            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 30px; background-color: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                                <tr>
+                                    <td style="padding: 20px;">
+                                        <p style="margin: 0 0 15px 0; color: #1a2744; font-size: 15px; font-weight: 600;">
+                                            📄 RG/CNH Admin - Verso: {{adminIdBack_name}}
+                                        </p>
+                                        <img src="{{adminIdBack_image}}" alt="Admin Verso" style="max-width: 100%; height: auto; border: 2px solid #dc2626; border-radius: 4px; display: block; margin: 0 auto;">
+                                    </td>
+                                </tr>
+                            </table>
                             
-                            <!-- CNPJ Card -->
-                            <div style="margin-bottom: 30px; padding: 20px; background-color: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
-                                <p style="margin: 0 0 15px 0; color: #1a2744; font-size: 15px; font-weight: 600;">
-                                    📄 Comprovante CNPJ: {{cnpjCard_name}}
-                                </p>
-                                <img src="{{cnpjCard_image}}" alt="CNPJ" style="max-width: 100%; height: auto; border: 2px solid #dc2626; border-radius: 4px; display: block; margin: 0 auto;">
-                            </div>
+                            <!-- CNPJ Card (PJ) -->
+                            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 30px; background-color: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                                <tr>
+                                    <td style="padding: 20px;">
+                                        <p style="margin: 0 0 15px 0; color: #1a2744; font-size: 15px; font-weight: 600;">
+                                            📄 Comprovante CNPJ: {{cnpjCard_name}}
+                                        </p>
+                                        <img src="{{cnpjCard_image}}" alt="CNPJ" style="max-width: 100%; height: auto; border: 2px solid #dc2626; border-radius: 4px; display: block; margin: 0 auto;">
+                                    </td>
+                                </tr>
+                            </table>
                             
-                            <!-- Warning Note -->
-                            <div style="margin: 30px 0; padding: 15px; background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px;">
-                                <p style="margin: 0; color: #92400e; font-size: 13px; line-height: 1.6;">
-                                    <strong>⚠️ Nota Importante:</strong> Apenas arquivos até 10KB são enviados como imagem. Arquivos maiores terão apenas informações (nome, tipo, tamanho) no JSON. Se a imagem não aparecer acima, o arquivo não foi enviado ou é muito grande.
-                                </p>
-                            </div>
+                            <!-- Company Proof of Address (PJ) -->
+                            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 30px; background-color: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                                <tr>
+                                    <td style="padding: 20px;">
+                                        <p style="margin: 0 0 15px 0; color: #1a2744; font-size: 15px; font-weight: 600;">
+                                            📄 Comprovante de Endereço da Empresa: {{companyProofOfAddress_name}}
+                                        </p>
+                                        <img src="{{companyProofOfAddress_image}}" alt="Comprovante Empresa" style="max-width: 100%; height: auto; border: 2px solid #dc2626; border-radius: 4px; display: block; margin: 0 auto;">
+                                    </td>
+                                </tr>
+                            </table>
                             
                             <!-- Footer -->
                             <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 40px; padding-top: 30px; border-top: 2px solid #e5e7eb;">

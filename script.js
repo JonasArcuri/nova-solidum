@@ -273,7 +273,7 @@ function validateFile(file, maxSizeMB = 10, allowedTypes = ['image/jpeg', 'image
     return { valid: true };
 }
 
-// Validação de arquivo para email (máximo 10KB)
+// Validação de arquivo para email (máximo 10MB, mas EmailJS limita a 50KB total)
 function validateFileForEmail(file, maxSizeKB = 10, allowedTypes = ['image/jpeg', 'image/png', 'application/pdf']) {
     if (!file) return { valid: false, error: 'Arquivo não selecionado' };
     
@@ -294,6 +294,271 @@ function fileToBase64(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+// Configuração do Tinify (opcional - melhor qualidade)
+// Obtenha sua API key em: https://tinypng.com/developers
+// Gratuito até 500 compressions/mês
+const TINIFY_CONFIG = {
+    enabled: true, // Mude para true após configurar o backend
+    apiKey: 'rG1y8sHgfYxFZfsc3g9prpxFjWS7YHfx', // Mantido para referência
+    apiUrl: 'https://api.tinify.com/shrink',
+    backendUrl: 'http://localhost:3000/api/tinify/compress' // URL do backend proxy
+};
+
+// Comprimir imagem usando Tinify (melhor qualidade)
+async function compressImageWithTinify(file, maxSizeKB = 15) {
+    if (!TINIFY_CONFIG.enabled) {
+        throw new Error('Tinify não habilitado');
+    }
+    
+    // Verificar se backend está configurado
+    if (!TINIFY_CONFIG.backendUrl) {
+        throw new Error('Backend URL não configurada. Configure TINIFY_CONFIG.backendUrl');
+    }
+    
+    // Se não for imagem, não usar Tinify
+    if (!file.type.startsWith('image/')) {
+        throw new Error('Tinify só funciona com imagens');
+    }
+    
+    // Verificar tamanho do arquivo (Tinify limita a 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        throw new Error('Arquivo muito grande para Tinify (máx. 5MB)');
+    }
+    
+    try {
+        // Criar FormData para enviar arquivo
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        // Fazer requisição para o backend proxy
+        const response = await fetch(TINIFY_CONFIG.backendUrl, {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!response.ok) {
+            let errorMessage = `Erro ${response.status}: ${response.statusText}`;
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.error || errorMessage;
+            } catch (e) {
+                // Se não conseguir ler JSON, usar mensagem padrão
+            }
+            
+            // Erros específicos
+            if (response.status === 401) {
+                throw new Error('API key inválida ou expirada');
+            } else if (response.status === 429) {
+                throw new Error('Limite de 500 compressions/mês excedido');
+            } else if (response.status === 0 || response.status === 500) {
+                throw new Error('Backend não disponível. Verifique se o servidor está rodando.');
+            }
+            
+            throw new Error(`Backend: ${errorMessage}`);
+        }
+        
+        const result = await response.json();
+        
+        if (!result.success || !result.base64) {
+            throw new Error('Resposta inválida do backend');
+        }
+        
+        const compressedSize = result.compressedSize / 1024;
+        const originalSize = result.originalSize / 1024;
+        
+        console.log(`✅ Tinify (via backend): ${originalSize.toFixed(2)} KB → ${compressedSize.toFixed(2)} KB`);
+        
+        // Se ainda estiver acima do limite, redimensionar
+        if (compressedSize > maxSizeKB) {
+            console.log(`⚠️ Tinify comprimiu para ${compressedSize.toFixed(2)} KB, mas precisa de ${maxSizeKB} KB. Redimensionando...`);
+            // Converter base64 para blob e redimensionar
+            const base64Data = result.base64.split(',')[1];
+            const binaryString = atob(base64Data);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            const blob = new Blob([bytes], { type: result.mimeType });
+            return await resizeAndCompressBlob(blob, maxSizeKB);
+        }
+        
+        // Retornar base64 diretamente
+        return result.base64;
+        
+    } catch (error) {
+        // Se for erro de network, verificar se backend está rodando
+        if (error.message.includes('Failed to fetch') || error.message.includes('Backend não disponível')) {
+            console.warn('⚠️ Backend não disponível. Verifique se o servidor está rodando em', TINIFY_CONFIG.backendUrl);
+            console.warn('💡 Execute: cd backend && npm start');
+            throw new Error('BACKEND_ERROR');
+        }
+        console.warn('⚠️ Erro ao usar Tinify:', error.message);
+        throw error; // Re-throw para usar fallback
+    }
+}
+
+// Redimensionar e comprimir blob se ainda estiver grande
+async function resizeAndCompressBlob(blob, maxSizeKB) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const maxSizeBytes = maxSizeKB * 1024;
+                const MAX_WIDTH = 800;
+                const MAX_HEIGHT = 800;
+                
+                let width = img.width;
+                let height = img.height;
+                
+                // Redimensionar se necessário
+                if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+                    const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
+                    width = width * ratio;
+                    height = height * ratio;
+                }
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // Tentar diferentes qualidades
+                    const tryCompress = (quality) => {
+                        const base64 = canvas.toDataURL('image/jpeg', quality);
+                        const base64Size = new Blob([base64]).size;
+                        
+                        if (base64Size <= maxSizeBytes || quality <= 0.15) {
+                            resolve(base64);
+                        } else {
+                            tryCompress(Math.max(0.15, quality - 0.05)); // Redução gradual, mínimo 15%
+                        }
+                    };
+                    
+                    tryCompress(0.8); // Qualidade inicial boa
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
+
+// Converter Blob para base64
+function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
+
+// Comprimir imagem para máximo de 15KB (boa qualidade, permite 3-4 imagens no limite de 50KB)
+async function compressImage(file, maxSizeKB = 15) {
+    // Tentar Tinify primeiro se estiver habilitado
+    if (TINIFY_CONFIG.enabled && TINIFY_CONFIG.apiKey && TINIFY_CONFIG.apiKey !== 'YOUR_TINIFY_API_KEY') {
+        try {
+            const compressed = await compressImageWithTinify(file, maxSizeKB);
+            return compressed;
+        } catch (error) {
+            // Se for erro de backend, avisar mas não desabilitar
+            if (error.message === 'BACKEND_ERROR') {
+                console.warn('⚠️ Backend não disponível. Usando compressão local.');
+                console.warn('💡 Para usar Tinify, inicie o backend: cd backend && npm start');
+            } else {
+                console.warn('⚠️ Tinify falhou, usando compressão local:', error.message);
+            }
+            // Continuar com método local
+        }
+    }
+    
+    // Método local (fallback ou se Tinify não estiver habilitado)
+    return new Promise((resolve, reject) => {
+        // Se não for imagem, retornar original
+        if (!file.type.startsWith('image/')) {
+            fileToBase64(file).then(resolve).catch(reject);
+            return;
+        }
+        
+        const maxSizeBytes = maxSizeKB * 1024;
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                // Calcular dimensões máximas (mantendo proporção)
+                // Otimizado para permitir múltiplas imagens (15KB permite boa qualidade em tamanho moderado)
+                const MAX_WIDTH = 1400;
+                const MAX_HEIGHT = 1400;
+                
+                let width = img.width;
+                let height = img.height;
+                
+                // Redimensionar se necessário
+                if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+                    const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
+                    width = width * ratio;
+                    height = height * ratio;
+                }
+                
+                // Criar canvas
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                
+                // Desenhar imagem redimensionada
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // Tentar diferentes qualidades até ficar abaixo do limite
+                const tryCompress = (quality, attempt = 0) => {
+                    // Determinar formato de saída - sempre JPEG para melhor compressão
+                    let outputFormat = 'image/jpeg';
+                    
+                    // Se for PNG, converter para JPEG
+                    if (file.type === 'image/png') {
+                        outputFormat = 'image/jpeg';
+                    }
+                    
+                    // Converter para base64
+                    const base64 = canvas.toDataURL(outputFormat, quality);
+                    const base64Size = new Blob([base64]).size; // Tamanho total da string base64
+                    
+                    if (base64Size <= maxSizeBytes || quality <= 0.15 || attempt >= 25) {
+                        // Tamanho OK, qualidade mínima (15% para manter legibilidade), ou muitas tentativas
+                        resolve(base64);
+                    } else {
+                        // Ainda muito grande, reduzir qualidade gradualmente
+                        // Reduzir mais rápido se estiver muito acima do limite
+                        let qualityStep = 0.05; // Passos menores para melhor controle
+                        if (base64Size > maxSizeBytes * 1.5) {
+                            qualityStep = 0.1; // Reduzir mais rápido se muito grande
+                        }
+                        const newQuality = Math.max(0.15, quality - qualityStep); // Mínimo 15% para legibilidade
+                        tryCompress(newQuality, attempt + 1);
+                    }
+                };
+                
+                // Começar com qualidade 0.8 (80%) - bom equilíbrio entre qualidade e tamanho
+                tryCompress(0.8);
+            };
+            
+            img.onerror = () => {
+                // Se falhar ao carregar imagem, tentar método original
+                fileToBase64(file).then(resolve).catch(reject);
+            };
+            
+            img.src = e.target.result;
+        };
+        
         reader.onerror = reject;
         reader.readAsDataURL(file);
     });
@@ -453,14 +718,23 @@ if (cnpjInput) {
 const cepInput = document.getElementById('cep');
 if (cepInput) {
     cepInput.addEventListener('input', (e) => {
+        // Só buscar CEP se não for estrangeiro
+        const isForeigner = document.getElementById('isForeigner')?.checked || false;
+        if (isForeigner) return;
+        
         e.target.value = formatCEP(e.target.value);
         if (e.target.value.replace(/\D/g, '').length === 8) {
             fetchCEP(e.target.value).then(data => {
                 if (data) {
-                    document.getElementById('street').value = data.logradouro || '';
-                    document.getElementById('district').value = data.bairro || '';
-                    document.getElementById('city').value = data.localidade || '';
-                    document.getElementById('state').value = data.uf || '';
+                    const streetInput = document.getElementById('street');
+                    const districtInput = document.getElementById('district');
+                    const cityInput = document.getElementById('city');
+                    const stateInput = document.getElementById('state');
+                    
+                    if (streetInput) streetInput.value = data.logradouro || '';
+                    if (districtInput) districtInput.value = data.bairro || '';
+                    if (cityInput) cityInput.value = data.localidade || '';
+                    if (stateInput) stateInput.value = data.uf || '';
                 }
             });
         }
@@ -518,14 +792,116 @@ if (birthDateInput) {
 // Validação de CPF
 if (cpfInput) {
     cpfInput.addEventListener('blur', (e) => {
+        const isForeigner = document.getElementById('isForeigner')?.checked || false;
         const cpf = e.target.value.replace(/\D/g, '');
-        if (cpf.length === 11 && !validateCPF(cpf)) {
+        
+        // Se não é estrangeiro e CPF está vazio, mostrar erro
+        if (!isForeigner && !cpf) {
+            e.target.setCustomValidity('CPF é obrigatório para brasileiros');
+            e.target.reportValidity();
+        } else if (cpf.length === 11 && !validateCPF(cpf)) {
             e.target.setCustomValidity('CPF inválido');
             e.target.reportValidity();
         } else {
             e.target.setCustomValidity('');
         }
     });
+}
+
+// Toggle CPF e Endereço baseado em estrangeiro
+const isForeignerCheckbox = document.getElementById('isForeigner');
+const cpfRequiredLabel = document.getElementById('cpfRequired');
+const cpfHint = document.getElementById('cpfHint');
+const addressBrazil = document.getElementById('addressBrazil');
+const addressForeign = document.getElementById('addressForeign');
+
+// Campos de endereço brasileiro
+const brazilAddressFields = {
+    cep: { input: document.getElementById('cep'), label: document.getElementById('cepRequired') },
+    street: { input: document.getElementById('street'), label: document.getElementById('streetRequired') },
+    number: { input: document.getElementById('number'), label: document.getElementById('numberRequired') },
+    district: { input: document.getElementById('district'), label: document.getElementById('districtRequired') },
+    city: { input: document.getElementById('city'), label: document.getElementById('cityRequired') },
+    state: { input: document.getElementById('state'), label: document.getElementById('stateRequired') }
+};
+
+// Campos de endereço estrangeiro
+const foreignAddressFields = {
+    foreignStreet: document.getElementById('foreignStreet'),
+    foreignNumber: document.getElementById('foreignNumber'),
+    foreignComplement: document.getElementById('foreignComplement'),
+    foreignDistrict: document.getElementById('foreignDistrict'),
+    foreignCity: document.getElementById('foreignCity'),
+    foreignState: document.getElementById('foreignState'),
+    foreignZipCode: document.getElementById('foreignZipCode'),
+    foreignCountry: document.getElementById('foreignCountry')
+};
+
+if (isForeignerCheckbox) {
+    function updateForeignerFields() {
+        const isForeigner = isForeignerCheckbox.checked;
+        
+        // Atualizar CPF
+        if (cpfInput) {
+            if (isForeigner) {
+                cpfInput.removeAttribute('required');
+                if (cpfRequiredLabel) cpfRequiredLabel.style.display = 'none';
+                if (cpfHint) cpfHint.textContent = 'Opcional para estrangeiros';
+            } else {
+                cpfInput.setAttribute('required', 'required');
+                if (cpfRequiredLabel) cpfRequiredLabel.style.display = 'inline';
+                if (cpfHint) cpfHint.textContent = 'Obrigatório para brasileiros';
+            }
+        }
+        
+        // Atualizar campos de endereço
+        if (addressBrazil && addressForeign) {
+            if (isForeigner) {
+                // Mostrar endereço estrangeiro, ocultar brasileiro
+                addressBrazil.style.display = 'none';
+                addressForeign.style.display = 'block';
+                
+                // Remover required dos campos brasileiros
+                Object.values(brazilAddressFields).forEach(field => {
+                    if (field.input) {
+                        field.input.removeAttribute('required');
+                        field.input.value = ''; // Limpar valores
+                    }
+                    if (field.label) field.label.style.display = 'none';
+                });
+                
+                // Adicionar required nos campos estrangeiros obrigatórios
+                if (foreignAddressFields.foreignStreet) foreignAddressFields.foreignStreet.setAttribute('required', 'required');
+                if (foreignAddressFields.foreignNumber) foreignAddressFields.foreignNumber.setAttribute('required', 'required');
+                if (foreignAddressFields.foreignCity) foreignAddressFields.foreignCity.setAttribute('required', 'required');
+                if (foreignAddressFields.foreignCountry) foreignAddressFields.foreignCountry.setAttribute('required', 'required');
+            } else {
+                // Mostrar endereço brasileiro, ocultar estrangeiro
+                addressBrazil.style.display = 'block';
+                addressForeign.style.display = 'none';
+                
+                // Adicionar required nos campos brasileiros
+                Object.values(brazilAddressFields).forEach(field => {
+                    if (field.input && field.input.id !== 'complement') {
+                        field.input.setAttribute('required', 'required');
+                    }
+                    if (field.label) field.label.style.display = 'inline';
+                });
+                
+                // Remover required dos campos estrangeiros e limpar
+                Object.values(foreignAddressFields).forEach(field => {
+                    if (field) {
+                        field.removeAttribute('required');
+                        field.value = ''; // Limpar valores
+                    }
+                });
+            }
+        }
+    }
+    
+    isForeignerCheckbox.addEventListener('change', updateForeignerFields);
+    // Inicializar estado
+    updateForeignerFields();
 }
 
 // Validação de CNPJ
@@ -541,7 +917,7 @@ if (cnpjInput) {
     });
 }
 
-// Validação de arquivos (tamanho máximo 10MB para upload, mas apenas <= 10KB será enviado por email)
+// Validação de arquivos (tamanho máximo 10MB para upload, tentará enviar até 10MB por email, respeitando limite de 50KB do EmailJS)
 const fileInputs = document.querySelectorAll('input[type="file"]');
 fileInputs.forEach(input => {
     input.addEventListener('change', (e) => {
@@ -561,11 +937,11 @@ fileInputs.forEach(input => {
                 return;
             }
             
-            // Aviso se arquivo > 10KB (não será enviado por email)
-            const MAX_EMAIL_SIZE = 10 * 1024; // 10KB
+            // Aviso se arquivo > 10MB (não será enviado por email)
+            const MAX_EMAIL_SIZE = 10 * 1024 * 1024; // 10MB
             if (file.size > MAX_EMAIL_SIZE) {
-                const sizeKB = (file.size / 1024).toFixed(2);
-                const warning = `⚠️ Arquivo grande (${sizeKB} KB). Apenas arquivos até 10 KB serão enviados por email. Este arquivo será registrado mas não enviado.`;
+                const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                const warning = `⚠️ Arquivo muito grande (${sizeMB} MB). Máximo permitido: 10 MB.`;
                 console.warn(warning);
                 // Mostrar aviso visual (opcional)
                 const hint = input.parentElement.querySelector('.file-size-warning');
@@ -600,10 +976,25 @@ if (registerForm) {
         
         // Validações específicas
         if (accountType === 'PF') {
+            const isForeigner = document.getElementById('isForeigner').checked;
             const cpf = document.getElementById('cpf').value.replace(/\D/g, '');
-            if (!validateCPF(cpf)) {
-                showMessage('CPF inválido. Por favor, verifique o número.', 'error');
-                return;
+            
+            // CPF é obrigatório apenas para brasileiros
+            if (!isForeigner) {
+                if (!cpf || cpf.length !== 11) {
+                    showMessage('CPF é obrigatório para brasileiros. Por favor, informe o CPF.', 'error');
+                    return;
+                }
+                if (!validateCPF(cpf)) {
+                    showMessage('CPF inválido. Por favor, verifique o número.', 'error');
+                    return;
+                }
+            } else if (cpf && cpf.length === 11) {
+                // Se estrangeiro preencheu CPF, validar mesmo assim
+                if (!validateCPF(cpf)) {
+                    showMessage('CPF inválido. Por favor, verifique o número ou deixe em branco se não tiver CPF.', 'error');
+                    return;
+                }
             }
             
             const birthDate = document.getElementById('birthDate').value;
@@ -631,10 +1022,10 @@ if (registerForm) {
             }
         }
         
-        // Validar arquivos
+        // Validar arquivos (apenas se foram enviados - não são mais obrigatórios)
         const fileInputsToValidate = accountType === 'PF' 
-            ? ['documentFront', 'documentBack', 'proofOfAddress']
-            : ['articlesOfAssociation', 'cnpjCard', 'adminIdFront', 'adminIdBack', 'companyProofOfAddress'];
+            ? ['documentFront', 'documentBack', 'selfie', 'proofOfAddress']
+            : ['articlesOfAssociation', 'cnpjCard', 'adminIdFront', 'adminIdBack', 'companyProofOfAddress', 'ecnpjCertificate'];
         
         for (const inputId of fileInputsToValidate) {
             const input = document.getElementById(inputId);
@@ -680,6 +1071,37 @@ if (registerForm) {
             };
             
             if (accountType === 'PF') {
+                const isForeigner = document.getElementById('isForeigner').checked;
+                
+                // Coletar endereço baseado em estrangeiro ou não
+                let address = {};
+                if (isForeigner) {
+                    // Endereço estrangeiro
+                    address = {
+                        street: document.getElementById('foreignStreet')?.value || '',
+                        number: document.getElementById('foreignNumber')?.value || '',
+                        complement: document.getElementById('foreignComplement')?.value || '',
+                        district: document.getElementById('foreignDistrict')?.value || '',
+                        city: document.getElementById('foreignCity')?.value || '',
+                        state: document.getElementById('foreignState')?.value || '',
+                        zipCode: document.getElementById('foreignZipCode')?.value || '',
+                        country: document.getElementById('foreignCountry')?.value || '',
+                        isForeign: true
+                    };
+                } else {
+                    // Endereço brasileiro
+                    address = {
+                        cep: document.getElementById('cep')?.value || '',
+                        street: document.getElementById('street')?.value || '',
+                        number: document.getElementById('number')?.value || '',
+                        complement: document.getElementById('complement')?.value || '',
+                        district: document.getElementById('district')?.value || '',
+                        city: document.getElementById('city')?.value || '',
+                        state: document.getElementById('state')?.value || '',
+                        isForeign: false
+                    };
+                }
+                
                 formData = {
                     ...formData,
                     fullName: document.getElementById('fullName').value,
@@ -687,20 +1109,12 @@ if (registerForm) {
                     rg: document.getElementById('rg').value || '',
                     cnh: document.getElementById('cnh').value || '',
                     birthDate: document.getElementById('birthDate').value,
-                    motherName: document.getElementById('motherName').value,
+                    isForeigner: isForeigner,
                     email: document.getElementById('userEmail').value,
                     phone: document.getElementById('userPhone').value,
                     pepStatus: document.getElementById('pepStatus').checked,
                     pepPosition: document.getElementById('pepPosition').value || '',
-                    address: {
-                        cep: document.getElementById('cep').value,
-                        street: document.getElementById('street').value,
-                        number: document.getElementById('number').value,
-                        complement: document.getElementById('complement').value || '',
-                        district: document.getElementById('district').value,
-                        city: document.getElementById('city').value,
-                        state: document.getElementById('state').value
-                    }
+                    address: address
                 };
             } else {
                 formData = {
@@ -731,8 +1145,9 @@ if (registerForm) {
                 };
             }
             
-            // Processar arquivos: enviar como base64 se <= 10KB, caso contrário apenas informações
-            const MAX_FILE_SIZE_FOR_EMAIL = 10 * 1024; // 10KB em bytes
+            // Processar arquivos: tentar enviar como base64 se <= 10MB
+            // Nota: EmailJS tem limite de 50KB total, então arquivos grandes podem não ser enviados
+            const MAX_FILE_SIZE_FOR_EMAIL = 10 * 1024 * 1024; // 10MB em bytes
             const fileFields = accountType === 'PF'
                 ? ['documentFront', 'documentBack', 'selfie', 'proofOfAddress']
                 : ['articlesOfAssociation', 'cnpjCard', 'adminIdFront', 'adminIdBack', 'companyProofOfAddress', 'ecnpjCertificate'];
@@ -746,19 +1161,36 @@ if (registerForm) {
                     formData[fieldId + '_size'] = file.size;
                     formData[fieldId + '_size_kb'] = (file.size / 1024).toFixed(2) + ' KB';
                     
-                    // Se arquivo <= 10KB, converter para base64 e enviar
+                    // Se arquivo <= 10MB, tentar comprimir e converter para base64
                     if (file.size <= MAX_FILE_SIZE_FOR_EMAIL) {
                         try {
-                            formData[fieldId + '_base64'] = await fileToBase64(file);
-                            formData[fieldId + '_sent'] = true;
-                            formData[fieldId + '_note'] = 'Arquivo enviado como anexo (base64)';
+                            // Comprimir imagem para máximo de 15KB (boa qualidade, permite 3-4 imagens no email)
+                            if (file.type.startsWith('image/')) {
+                                formData[fieldId + '_base64'] = await compressImage(file, 15);
+                                const compressedSize = new Blob([formData[fieldId + '_base64']]).size / 1024;
+                                formData[fieldId + '_sent'] = true;
+                                formData[fieldId + '_note'] = `Imagem comprimida para ${compressedSize.toFixed(2)} KB (máx. 15 KB, boa qualidade)`;
+                                console.log(`✅ ${fieldId}: ${(file.size / 1024).toFixed(2)} KB → ${compressedSize.toFixed(2)} KB`);
+                            } else {
+                                // Para PDFs e outros, usar método original (mas pode não caber no email)
+                                formData[fieldId + '_base64'] = await fileToBase64(file);
+                                const base64Size = new Blob([formData[fieldId + '_base64']]).size / 1024;
+                                formData[fieldId + '_sent'] = true;
+                                if (base64Size > 15) {
+                                    formData[fieldId + '_note'] = `Arquivo PDF (${base64Size.toFixed(2)} KB) - pode não ser enviado por email devido ao limite de 15KB`;
+                                } else {
+                                    formData[fieldId + '_note'] = `Arquivo convertido (${base64Size.toFixed(2)} KB)`;
+                                }
+                            }
                         } catch (error) {
-                            console.error(`Erro ao converter ${fieldId} para base64:`, error);
-                            formData[fieldId + '_note'] = 'Erro ao converter arquivo para base64';
+                            console.error(`Erro ao processar ${fieldId}:`, error);
+                            formData[fieldId + '_sent'] = false;
+                            formData[fieldId + '_note'] = 'Erro ao processar arquivo';
                         }
                     } else {
                         formData[fieldId + '_sent'] = false;
-                        formData[fieldId + '_note'] = `Arquivo muito grande (${(file.size / 1024).toFixed(2)} KB). Máximo permitido: 10 KB. Será necessário solicitar por outro método.`;
+                        const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                        formData[fieldId + '_note'] = `Arquivo muito grande (${sizeMB} MB). Máximo permitido: 10 MB.`;
                     }
                 }
             }
@@ -783,62 +1215,328 @@ if (registerForm) {
                 reply_to: accountType === 'PF' ? formData.email : formData.companyEmail
             };
             
-            // Adicionar campos específicos para facilitar leitura no email
+            // Adicionar campos específicos APENAS se tiverem valor
             if (accountType === 'PF') {
-                companyTemplateParams.user_name = formData.fullName;
-                companyTemplateParams.user_email = formData.email;
-                companyTemplateParams.user_phone = formData.phone;
-                companyTemplateParams.user_cpf = formData.cpf;
+                if (formData.fullName) companyTemplateParams.user_name = formData.fullName;
+                if (formData.email) companyTemplateParams.user_email = formData.email;
+                if (formData.phone) companyTemplateParams.user_phone = formData.phone;
+                if (formData.cpf) {
+                    companyTemplateParams.user_cpf = formData.cpf;
+                } else {
+                    companyTemplateParams.user_cpf = 'Não informado';
+                }
+                companyTemplateParams.is_foreigner = formData.isForeigner ? 'Sim' : 'Não';
+                
+                // Adicionar dados adicionais apenas se preenchidos
+                if (formData.rg) {
+                    companyTemplateParams.user_rg = formData.rg;
+                    companyTemplateParams.has_user_rg = 'SIM';
+                }
+                if (formData.cnh) {
+                    companyTemplateParams.user_cnh = formData.cnh;
+                    companyTemplateParams.has_user_cnh = 'SIM';
+                }
+                if (formData.birthDate) {
+                    companyTemplateParams.user_birthDate = formData.birthDate;
+                    companyTemplateParams.has_user_birthDate = 'SIM';
+                }
+                if (formData.pepStatus) {
+                    companyTemplateParams.user_pep = 'Sim';
+                    companyTemplateParams.has_user_pep = 'SIM';
+                    if (formData.pepPosition) {
+                        companyTemplateParams.user_pep_position = formData.pepPosition;
+                        companyTemplateParams.has_user_pep_position = 'SIM';
+                    }
+                }
+                
+                // Endereço
+                if (formData.address) {
+                    let hasAddress = false;
+                    if (formData.address.isForeign) {
+                        // Endereço estrangeiro
+                        if (formData.address.street) {
+                            companyTemplateParams.address_street = formData.address.street;
+                            hasAddress = true;
+                        }
+                        if (formData.address.number) {
+                            companyTemplateParams.address_number = formData.address.number;
+                            hasAddress = true;
+                        }
+                        if (formData.address.complement) {
+                            companyTemplateParams.address_complement = formData.address.complement;
+                            hasAddress = true;
+                        }
+                        if (formData.address.district) {
+                            companyTemplateParams.address_district = formData.address.district;
+                            hasAddress = true;
+                        }
+                        if (formData.address.city) {
+                            companyTemplateParams.address_city = formData.address.city;
+                            hasAddress = true;
+                        }
+                        if (formData.address.state) {
+                            companyTemplateParams.address_state = formData.address.state;
+                            hasAddress = true;
+                        }
+                        if (formData.address.zipCode) {
+                            companyTemplateParams.address_zipCode = formData.address.zipCode;
+                            hasAddress = true;
+                        }
+                        if (formData.address.country) {
+                            companyTemplateParams.address_country = formData.address.country;
+                            hasAddress = true;
+                        }
+                        if (hasAddress) {
+                            companyTemplateParams.address_type = 'Estrangeiro';
+                            companyTemplateParams.has_address = 'SIM';
+                        }
+                    } else {
+                        // Endereço brasileiro
+                        if (formData.address.cep) {
+                            companyTemplateParams.address_cep = formData.address.cep;
+                            hasAddress = true;
+                        }
+                        if (formData.address.street) {
+                            companyTemplateParams.address_street = formData.address.street;
+                            hasAddress = true;
+                        }
+                        if (formData.address.number) {
+                            companyTemplateParams.address_number = formData.address.number;
+                            hasAddress = true;
+                        }
+                        if (formData.address.complement) {
+                            companyTemplateParams.address_complement = formData.address.complement;
+                            hasAddress = true;
+                        }
+                        if (formData.address.district) {
+                            companyTemplateParams.address_district = formData.address.district;
+                            hasAddress = true;
+                        }
+                        if (formData.address.city) {
+                            companyTemplateParams.address_city = formData.address.city;
+                            hasAddress = true;
+                        }
+                        if (formData.address.state) {
+                            companyTemplateParams.address_state = formData.address.state;
+                            hasAddress = true;
+                        }
+                        if (hasAddress) {
+                            companyTemplateParams.address_type = 'Brasileiro';
+                            companyTemplateParams.has_address = 'SIM';
+                        }
+                    }
+                }
             } else {
-                companyTemplateParams.company_name = formData.companyName;
-                companyTemplateParams.company_email = formData.companyEmail;
-                companyTemplateParams.company_phone = formData.companyPhone;
-                companyTemplateParams.company_cnpj = formData.cnpj;
-            }
-            
-            // Adicionar arquivos base64 como variáveis separadas (apenas se <= 10KB)
-            let totalBase64Size = 0;
-            for (const fieldId of fileFieldsForTemplate) {
-                if (formData[fieldId + '_base64']) {
-                    const base64 = formData[fieldId + '_base64'];
-                    // Calcular tamanho aproximado do base64 (string length em bytes)
-                    totalBase64Size += base64.length;
-                    
-                    // Adicionar como variável separada para facilitar uso no template
-                    companyTemplateParams[fieldId + '_image'] = base64;
-                    companyTemplateParams[fieldId + '_name'] = formData[fieldId + '_name'];
+                if (formData.companyName) {
+                    companyTemplateParams.company_name = formData.companyName;
+                    companyTemplateParams.has_company_name = 'SIM';
+                }
+                if (formData.tradeName) {
+                    companyTemplateParams.company_tradeName = formData.tradeName;
+                    companyTemplateParams.has_company_tradeName = 'SIM';
+                }
+                if (formData.companyEmail) {
+                    companyTemplateParams.company_email = formData.companyEmail;
+                    companyTemplateParams.has_company_email = 'SIM';
+                }
+                if (formData.companyPhone) {
+                    companyTemplateParams.company_phone = formData.companyPhone;
+                    companyTemplateParams.has_company_phone = 'SIM';
+                }
+                if (formData.cnpj) {
+                    companyTemplateParams.company_cnpj = formData.cnpj;
+                    companyTemplateParams.has_company_cnpj = 'SIM';
+                }
+                if (formData.foundationDate) {
+                    companyTemplateParams.company_foundationDate = formData.foundationDate;
+                    companyTemplateParams.has_company_foundationDate = 'SIM';
+                }
+                if (formData.mainCNAE) {
+                    companyTemplateParams.company_mainCNAE = formData.mainCNAE;
+                    companyTemplateParams.has_company_mainCNAE = 'SIM';
+                }
+                if (formData.legalNature) {
+                    companyTemplateParams.company_legalNature = formData.legalNature;
+                    companyTemplateParams.has_company_legalNature = 'SIM';
+                }
+                
+                // Endereço PJ
+                if (formData.address) {
+                    let hasAddress = false;
+                    if (formData.address.cep) {
+                        companyTemplateParams.address_cep = formData.address.cep;
+                        hasAddress = true;
+                    }
+                    if (formData.address.street) {
+                        companyTemplateParams.address_street = formData.address.street;
+                        hasAddress = true;
+                    }
+                    if (formData.address.number) {
+                        companyTemplateParams.address_number = formData.address.number;
+                        hasAddress = true;
+                    }
+                    if (formData.address.complement) {
+                        companyTemplateParams.address_complement = formData.address.complement;
+                        hasAddress = true;
+                    }
+                    if (formData.address.district) {
+                        companyTemplateParams.address_district = formData.address.district;
+                        hasAddress = true;
+                    }
+                    if (formData.address.city) {
+                        companyTemplateParams.address_city = formData.address.city;
+                        hasAddress = true;
+                    }
+                    if (formData.address.state) {
+                        companyTemplateParams.address_state = formData.address.state;
+                        hasAddress = true;
+                    }
+                    if (hasAddress) {
+                        companyTemplateParams.has_address = 'SIM';
+                    }
+                }
+                
+                // Administrador
+                if (formData.majorityAdmin) {
+                    let hasAdmin = false;
+                    if (formData.majorityAdmin.name) {
+                        companyTemplateParams.admin_name = formData.majorityAdmin.name;
+                        hasAdmin = true;
+                    }
+                    if (formData.majorityAdmin.cpf) {
+                        companyTemplateParams.admin_cpf = formData.majorityAdmin.cpf;
+                        hasAdmin = true;
+                    }
+                    if (formData.majorityAdmin.email) {
+                        companyTemplateParams.admin_email = formData.majorityAdmin.email;
+                        hasAdmin = true;
+                    }
+                    if (formData.majorityAdmin.phone) {
+                        companyTemplateParams.admin_phone = formData.majorityAdmin.phone;
+                        hasAdmin = true;
+                    }
+                    if (hasAdmin) {
+                        companyTemplateParams.has_admin = 'SIM';
+                    }
                 }
             }
             
-            // Calcular tamanho total aproximado
-            const otherParamsSize = new Blob([JSON.stringify(companyTemplateParams)]).size;
+            // Flag para indicar se há documentos
+            const hasDocuments = fileFieldsForTemplate.some(fieldId => companyTemplateParams['has_' + fieldId] === 'SIM');
+            if (hasDocuments) {
+                companyTemplateParams.has_documents = 'SIM';
+            }
+            
+            // Adicionar arquivos base64 comprimidos aos parâmetros do template
+            // EmailJS tem limite de 50KB total, imagens comprimidas para máximo 15KB cada (boa qualidade)
+            // Estratégia: enviar TODAS as imagens possíveis (3-4 imagens de ~12-15KB cada)
+            const EMAILJS_MAX_SIZE = 50 * 1024; // 50KB limite do EmailJS
+            const SAFE_SIZE = 45 * 1024; // 45KB para margem de segurança (permite 3-4 imagens de ~12-15KB cada)
+            
+            // Coletar todos os arquivos com base64 e calcular tamanho real
+            const filesWithBase64 = [];
+            for (const fieldId of fileFieldsForTemplate) {
+                if (formData[fieldId + '_base64']) {
+                    const base64 = formData[fieldId + '_base64'];
+                    // Tamanho da string base64 em bytes
+                    const base64Size = new Blob([base64]).size;
+                    filesWithBase64.push({
+                        fieldId: fieldId,
+                        base64: base64,
+                        size: base64Size, // Tamanho em bytes
+                        name: formData[fieldId + '_name'] || 'arquivo'
+                    });
+                }
+            }
+            
+            // Estratégia: tentar enviar TODAS as imagens, priorizando imagens sobre form_data
+            // Ordenar por tamanho (menores primeiro) para maximizar número de imagens
+            filesWithBase64.sort((a, b) => a.size - b.size);
+            
+            // Adicionar TODAS as imagens primeiro (sem form_data)
+            let totalBase64Size = 0;
+            const addedFiles = [];
+            const skippedFiles = [];
+            
+            // Adicionar todas as imagens possíveis
+            for (const file of filesWithBase64) {
+                // Calcular tamanho se adicionarmos este arquivo (sem form_data ainda)
+                const testParams = JSON.parse(JSON.stringify(companyTemplateParams));
+                addedFiles.forEach(f => {
+                    testParams[f.fieldId + '_image'] = f.base64;
+                    testParams[f.fieldId + '_name'] = f.name;
+                });
+                testParams[file.fieldId + '_image'] = file.base64;
+                testParams[file.fieldId + '_name'] = file.name;
+                
+                // Calcular tamanho total estimado (sem form_data)
+                const testParamsSize = new Blob([JSON.stringify(testParams)]).size;
+                
+                // Verificar se cabe no limite total (priorizando imagens)
+                if (testParamsSize <= EMAILJS_MAX_SIZE) {
+                    // Cabe, adicionar
+                    companyTemplateParams[file.fieldId + '_image'] = file.base64;
+                    companyTemplateParams[file.fieldId + '_name'] = file.name;
+                    companyTemplateParams['has_' + file.fieldId] = 'SIM'; // Flag para mostrar no template
+                    totalBase64Size += file.size;
+                    addedFiles.push(file);
+                    console.log(`✅ Adicionando ${file.fieldId}_image (${(file.size / 1024).toFixed(2)} KB)`);
+                } else {
+                    // Não cabe, pular
+                    skippedFiles.push(file);
+                    if (formData[file.fieldId + '_sent'] !== false) {
+                        formData[file.fieldId + '_sent'] = false;
+                    }
+                    if (formData[file.fieldId + '_note']) {
+                        formData[file.fieldId + '_note'] += ` Não enviado por email (limite de 50KB total do EmailJS).`;
+                    } else {
+                        formData[file.fieldId + '_note'] = `Não enviado por email (limite de 50KB total do EmailJS).`;
+                    }
+                    console.warn(`⚠️ Pulando ${file.fieldId}_image (${(file.size / 1024).toFixed(2)} KB) - excederia limite`);
+                }
+            }
+            
+            // Calcular tamanho final com todas as imagens adicionadas
+            const finalParamsSize = new Blob([JSON.stringify(companyTemplateParams)]).size;
             const formDataJsonSize = new Blob([JSON.stringify(formDataWithoutBase64, null, 2)]).size;
-            const estimatedTotalSize = totalBase64Size + otherParamsSize + formDataJsonSize;
+            const estimatedTotalSize = finalParamsSize + formDataJsonSize;
             
-            const MAX_SIZE = 45 * 1024; // 45KB para deixar margem de segurança (limite é 50KB)
-            
-            // Se o tamanho estimado for muito grande, não enviar form_data completo
-            if (estimatedTotalSize > MAX_SIZE) {
-                // Não enviar form_data completo para economizar espaço
-                companyTemplateParams.form_data_note = 'Dados completos muito grandes para envio. Apenas informações principais enviadas.';
-                console.warn(`Tamanho estimado (${(estimatedTotalSize / 1024).toFixed(2)} KB) excede limite. Removendo form_data completo.`);
-            } else {
-                // Tamanho OK, pode enviar form_data (sem base64 para não duplicar)
+            // Tentar adicionar form_data se ainda houver espaço
+            if (estimatedTotalSize <= EMAILJS_MAX_SIZE) {
+                // Tamanho OK, pode enviar form_data também
                 companyTemplateParams.form_data = JSON.stringify(formDataWithoutBase64, null, 2);
+                if (addedFiles.length === filesWithBase64.length) {
+                    companyTemplateParams.form_data_note = `✅ Todas as ${addedFiles.length} imagem(ns) enviada(s) com sucesso!`;
+                } else {
+                    companyTemplateParams.form_data_note = `${addedFiles.length} imagem(ns) enviada(s). ${skippedFiles.length} não enviada(s) devido ao limite.`;
+                }
+            } else {
+                // Não cabe form_data, mas mantém todas as imagens
+                console.log(`ℹ️ Removendo form_data para manter todas as ${addedFiles.length} imagem(ns) enviadas`);
+                companyTemplateParams.form_data_note = `✅ Todas as ${addedFiles.length} imagem(ns) enviada(s)! Dados completos não enviados para economizar espaço (limite de 50KB).`;
             }
             
-            // Adicionar campos específicos para facilitar leitura no email
-            if (accountType === 'PF') {
-                companyTemplateParams.user_name = formData.fullName;
-                companyTemplateParams.user_email = formData.email;
-                companyTemplateParams.user_phone = formData.phone;
-                companyTemplateParams.user_cpf = formData.cpf;
-            } else {
-                companyTemplateParams.company_name = formData.companyName;
-                companyTemplateParams.company_email = formData.companyEmail;
-                companyTemplateParams.company_phone = formData.companyPhone;
-                companyTemplateParams.company_cnpj = formData.cnpj;
+            // Log para debug
+            if (addedFiles.length > 0) {
+                console.log(`✅ ${addedFiles.length} arquivo(s) adicionado(s) ao email (total base64: ${(totalBase64Size / 1024).toFixed(2)} KB)`);
+                console.log('📧 Variáveis de imagem que serão enviadas:');
+                addedFiles.forEach(f => {
+                    const varName = f.fieldId + '_image';
+                    const varSize = (f.size / 1024).toFixed(2);
+                    console.log(`   - ${varName}: ${varSize} KB (primeiros 50 caracteres: ${f.base64.substring(0, 50)}...)`);
+                });
             }
+            if (skippedFiles.length > 0) {
+                console.warn(`⚠️ ${skippedFiles.length} arquivo(s) não enviado(s) devido ao limite do EmailJS`);
+            }
+            
+            // Log final dos parâmetros que serão enviados
+            console.log('📋 Parâmetros finais do EmailJS:', {
+                totalParams: Object.keys(companyTemplateParams).length,
+                imageParams: Object.keys(companyTemplateParams).filter(k => k.includes('_image')),
+                estimatedSize: `${(estimatedTotalSize / 1024).toFixed(2)} KB`
+            });
+            
             
             // Template parameters for EmailJS - Confirmation email to user
             const userEmail = accountType === 'PF' ? formData.email : formData.companyEmail;
@@ -851,12 +1549,24 @@ if (registerForm) {
                 subject: 'Registro Confirmado - Nova Solidum Finances'
             };
             
+            // Log final antes de enviar
+            console.log('📤 Enviando email com os seguintes parâmetros:');
+            console.log('   - Total de parâmetros:', Object.keys(companyTemplateParams).length);
+            console.log('   - Parâmetros de imagem:', Object.keys(companyTemplateParams).filter(k => k.endsWith('_image')));
+            console.log('   - Tamanho estimado:', `${(estimatedTotalSize / 1024).toFixed(2)} KB`);
+            
             // Send email to Nova Solidum (empresa)
-            await emailjs.send(
-                EMAILJS_CONFIG.serviceID,
-                EMAILJS_CONFIG.templateIDCompany,
-                companyTemplateParams
-            );
+            try {
+                const emailResult = await emailjs.send(
+                    EMAILJS_CONFIG.serviceID,
+                    EMAILJS_CONFIG.templateIDCompany,
+                    companyTemplateParams
+                );
+                console.log('✅ Email enviado com sucesso!', emailResult);
+            } catch (emailError) {
+                console.error('❌ Erro ao enviar email:', emailError);
+                throw emailError;
+            }
             
             // Send confirmation email to user
             await emailjs.send(
