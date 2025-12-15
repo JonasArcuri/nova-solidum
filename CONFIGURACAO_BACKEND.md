@@ -4,7 +4,7 @@ Este guia explica como conectar o frontend ao backend hospedado no Vercel.
 
 ## 📋 Pré-requisitos
 
-- Backend já hospedado e funcionando no Vercel
+- Backend já hospedado e funcionando no Vercel em outro repositório
 - URL do backend no Vercel (exemplo: `https://seu-backend.vercel.app`)
 
 ## ⚙️ Configuração
@@ -28,7 +28,7 @@ const BACKEND_CONFIG = {
 
 ### 3. Configurar URL do Backend para Compressão de Imagens (Tinify)
 
-Encontre a seção `TINIFY_CONFIG` (aproximadamente linha 315):
+Encontre a seção `TINIFY_CONFIG` (aproximadamente linha 384):
 
 ```javascript
 const TINIFY_CONFIG = {
@@ -99,7 +99,7 @@ const BACKEND_CONFIG = {
 
 ## 📝 Notas Importantes
 
-- O backend deve estar configurado com as variáveis de ambiente corretas (veja `backend/EMAIL_SETUP.md`)
+- O backend deve estar configurado com as variáveis de ambiente corretas
 - O backend deve ter CORS configurado para permitir requisições do seu frontend
 - O backend deve ter a API key do Tinify configurada no `.env`
-
+- O backend está em um repositório separado e já está hospedado no Vercel
