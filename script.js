@@ -180,8 +180,8 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
             }
         }
         
-        console.log(`📤 Enviando formulário para backend: ${filesCount} arquivo(s) anexado(s)`);
-        console.log(`📍 URL do backend: ${BACKEND_CONFIG.url}`);
+        // console.log(`📤 Enviando formulário para backend: ${filesCount} arquivo(s) anexado(s)`);
+        // console.log(`📍 URL do backend: ${BACKEND_CONFIG.url}`);
         
         // Enviar para o backend
         const response = await fetch(BACKEND_CONFIG.url, {
@@ -210,7 +210,7 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
         }
         
         const result = await response.json();
-        console.log('✅ Email enviado com sucesso!', result);
+        // console.log('✅ Email enviado com sucesso!', result);
         
         // Show success message
         showMessage(`Formulário enviado com sucesso! ${result.attachmentsCount || filesCount} anexo(s) enviado(s). Verifique seu email para confirmação. Entraremos em contato em breve.`, 'success');
