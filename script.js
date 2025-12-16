@@ -140,7 +140,8 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Configuração do Backend (envio de emails com anexos reais)
-// URL do backend hospedado no Vercel
+// SEGURANÇA: URLs do backend são públicas, mas não expõem credenciais
+// Todas as chaves de API e senhas estão armazenadas no backend
 const BACKEND_CONFIG = {
     url: 'https://back-end-nova.vercel.app/api/email/send' // URL do backend no Vercel
 };
@@ -228,7 +229,9 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
             console.error('🚫 Erro de CORS detectado. O backend precisa ser configurado para aceitar requisições do frontend.');
             showMessage('Erro de CORS: O backend não está configurado para aceitar requisições deste domínio. Verifique a configuração de CORS no backend (variável FRONTEND_URL deve ser: https://www.novasolidumfinance.com.br).', 'error');
         } else {
-            showMessage(`Erro ao enviar formulário: ${error.message}. Por favor, tente novamente ou entre em contato diretamente pelo email novasolidum@gmail.com`, 'error');
+            // SEGURANÇA: Email removido do código para evitar exposição
+            // O email de contato deve ser configurado no backend ou exibido apenas na página
+            showMessage(`Erro ao enviar formulário: ${error.message}. Por favor, tente novamente ou entre em contato através do suporte.`, 'error');
         }
     } finally {
         // Re-enable submit button
@@ -356,12 +359,13 @@ function fileToBase64(file) {
 }
 
 // Configuração do Tinify (opcional - melhor qualidade)
-// Obtenha sua API key em: https://tinypng.com/developers
+// SEGURANÇA: A API key do Tinify está armazenada no backend, não no frontend
+// O frontend apenas envia requisições para o backend que processa a compressão
 // Gratuito até 500 compressions/mês
 const TINIFY_CONFIG = {
     enabled: true, // Habilitado - usando backend para compressão
-    apiKey: 'rG1y8sHgfYxFZfsc3g9prpxFjWS7YHfx', // Mantido para referência
-    apiUrl: 'https://api.tinify.com/shrink',
+    // NOTA: apiKey removida por segurança - a chave está no backend
+    apiUrl: 'https://api.tinify.com/shrink', // URL da API (não usada diretamente)
     // IMPORTANTE: Substitua pela URL do seu backend hospedado no Vercel
     // Exemplo: 'https://seu-backend.vercel.app/api/tinify/compress'
     backendUrl: 'https://back-end-nova.vercel.app/api/tinify/compress' // URL do backend proxy no Vercel
@@ -522,7 +526,8 @@ function blobToBase64(blob) {
 // Comprimir imagem usando Tinify (melhor qualidade)
 async function compressImage(file, maxSizeKB = 15) {
     // Tentar Tinify primeiro se estiver habilitado
-    if (TINIFY_CONFIG.enabled && TINIFY_CONFIG.apiKey && TINIFY_CONFIG.apiKey !== 'YOUR_TINIFY_API_KEY') {
+    // SEGURANÇA: A verificação de apiKey foi removida pois a chave está no backend
+    if (TINIFY_CONFIG.enabled && TINIFY_CONFIG.backendUrl) {
         try {
             const compressed = await compressImageWithTinify(file, maxSizeKB);
             return compressed;
