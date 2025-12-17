@@ -188,6 +188,55 @@
                     </div>
                 </div>
             </div>
+
+            <!-- TradingView Widget USDT/BRL - Gráfico Completo com Velas -->
+            <div class="tradingview-widget-container">
+                <div id="tradingview_usdtbrl"></div>
+                <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+                <script type="text/javascript">
+                (function() {
+                    var width = window.innerWidth;
+                    var isMobile = width <= 479;
+                    var isTablet = width > 479 && width <= 839;
+                    
+                    new TradingView.widget({
+                        "autosize": true,
+                        "symbol": "BINANCE:USDTBRL",
+                        "interval": isMobile ? "240" : isTablet ? "60" : "D",
+                        "timezone": "America/Sao_Paulo",
+                        "theme": "light",
+                        "style": "1",
+                        "locale": "pt_BR",
+                        "toolbar_bg": "#f1f3f6",
+                        "enable_publishing": false,
+                        "hide_top_toolbar": isMobile,
+                        "hide_legend": isMobile,
+                        "save_image": false,
+                        "container_id": "tradingview_usdtbrl",
+                        "studies": [
+                            "Volume@tv-basicstudies"
+                        ],
+                        "show_popup_button": !isMobile && !isTablet,
+                        "popup_width": "1000",
+                        "popup_height": "650",
+                        "no_referral_id": true,
+                        "referral_id": "",
+                        "hide_side_toolbar": isMobile,
+                        "allow_symbol_change": !isMobile && !isTablet,
+                        "overrides": {
+                            "paneProperties.background": "#ffffff",
+                            "paneProperties.backgroundType": "solid",
+                            "mainSeriesProperties.candleStyle.upColor": "#26a69a",
+                            "mainSeriesProperties.candleStyle.downColor": "#ef5350",
+                            "mainSeriesProperties.candleStyle.borderUpColor": "#26a69a",
+                            "mainSeriesProperties.candleStyle.borderDownColor": "#ef5350",
+                            "mainSeriesProperties.candleStyle.wickUpColor": "#26a69a",
+                            "mainSeriesProperties.candleStyle.wickDownColor": "#ef5350"
+                        }
+                    });
+                })();
+                </script>
+            </div>
         </div>
     </section>
 
