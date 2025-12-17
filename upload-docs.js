@@ -45,9 +45,45 @@ async function verifyToken() {
         if (accountType === 'PF') {
             pfForm.style.display = 'block';
             pjForm.style.display = 'none';
+            
+            // Remover required dos campos PJ
+            const pjRequiredFields = ['articlesOfAssociation', 'cnpjCard', 'adminIdFront', 'adminIdBack', 'companyProofOfAddress', 'ecnpjCertificate'];
+            pjRequiredFields.forEach(fieldId => {
+                const input = document.getElementById(fieldId);
+                if (input) {
+                    input.removeAttribute('required');
+                }
+            });
+            
+            // Adicionar required nos campos PF
+            const pfRequiredFields = ['documentFront', 'documentBack', 'proofOfAddress'];
+            pfRequiredFields.forEach(fieldId => {
+                const input = document.getElementById(fieldId);
+                if (input) {
+                    input.setAttribute('required', 'required');
+                }
+            });
         } else {
             pfForm.style.display = 'none';
             pjForm.style.display = 'block';
+            
+            // Remover required dos campos PF
+            const pfRequiredFields = ['documentFront', 'documentBack', 'selfie', 'proofOfAddress'];
+            pfRequiredFields.forEach(fieldId => {
+                const input = document.getElementById(fieldId);
+                if (input) {
+                    input.removeAttribute('required');
+                }
+            });
+            
+            // Adicionar required nos campos PJ
+            const pjRequiredFields = ['articlesOfAssociation', 'cnpjCard', 'adminIdFront', 'adminIdBack', 'companyProofOfAddress'];
+            pjRequiredFields.forEach(fieldId => {
+                const input = document.getElementById(fieldId);
+                if (input) {
+                    input.setAttribute('required', 'required');
+                }
+            });
         }
         
         documentsForm.style.display = 'block';
