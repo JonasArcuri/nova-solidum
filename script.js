@@ -143,7 +143,9 @@ document.addEventListener('keydown', (e) => {
 // SEGURANÇA: URLs do backend são públicas, mas não expõem credenciais
 // Todas as chaves de API e senhas estão armazenadas no backend
 const BACKEND_CONFIG = {
-    url: 'https://back-end-nova.vercel.app/api/email/send' // URL do backend no Vercel
+    url: 'https://back-end-nova.vercel.app/api/email/send', // URL do backend no Vercel (legado)
+    registerUrl: 'https://back-end-nova.vercel.app/api/register/initial', // Nova rota para cadastro inicial
+    documentsUrl: 'https://back-end-nova.vercel.app/api/register/documents' // Nova rota para envio de documentos
 };
 
 // Function to show message
@@ -155,14 +157,66 @@ function showMessage(message, type) {
     formMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-// Função para enviar formulário para o backend
-async function sendFormToBackend(formData, accountType, submitBtn) {
+// Função para enviar cadastro inicial (ETAPA 1) - sem documentos
+async function sendInitialRegistration(formData, accountType, submitBtn) {
+    try {
+        // Enviar apenas dados básicos (sem documentos)
+        const response = await fetch(BACKEND_CONFIG.registerUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        if (!response.ok) {
+            let errorMessage = 'Erro ao processar cadastro';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.error || errorData.message || errorMessage;
+            } catch (e) {
+                // Usar mensagem padrão
+            }
+            throw new Error(errorMessage);
+        }
+        
+        const result = await response.json();
+        
+        // Show success message
+        showMessage('Cadastro realizado com sucesso! Verifique seu email para enviar os documentos.', 'success');
+        
+        // Reset form after 3 seconds
+        setTimeout(() => {
+            registerForm.reset();
+            closeModal();
+        }, 3000);
+        
+    } catch (error) {
+        // Log de erro genérico sem expor detalhes sensíveis
+        const errorMessage = error.message || 'Erro desconhecido';
+        
+        // Detectar erro de CORS
+        if (errorMessage.includes('Failed to fetch') || errorMessage.includes('CORS') || errorMessage.includes('NetworkError')) {
+            showMessage('Erro de conexão. Verifique sua conexão com a internet e tente novamente.', 'error');
+        } else {
+            // SEGURANÇA: Não expor detalhes do erro
+            showMessage('Erro ao enviar cadastro. Por favor, tente novamente ou entre em contato através do suporte.', 'error');
+        }
+    } finally {
+        // Re-enable submit button
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Enviar';
+    }
+}
+
+// Função para enviar documentos (ETAPA 2) - requer token
+async function sendDocumentsToBackend(formData, accountType, submitBtn, token) {
     try {
         // Criar FormData para enviar arquivos
         const formDataToSend = new FormData();
         
-        // Adicionar dados do formulário como JSON
-        formDataToSend.append('formData', JSON.stringify(formData));
+        // Adicionar token
+        formDataToSend.append('token', token);
         
         // Adicionar arquivos
         const fileFields = accountType === 'PF'
@@ -176,67 +230,61 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
                 const file = input.files[0];
                 formDataToSend.append(fieldId, file);
                 filesCount++;
-                console.log(`📎 Adicionando arquivo: ${fieldId} - ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
             }
         }
         
-        // console.log(`📤 Enviando formulário para backend: ${filesCount} arquivo(s) anexado(s)`);
-        // console.log(`📍 URL do backend: ${BACKEND_CONFIG.url}`);
-        
-        // Enviar para o backend
-        const response = await fetch(BACKEND_CONFIG.url, {
+        // Enviar para o backend com token no header
+        const response = await fetch(BACKEND_CONFIG.documentsUrl, {
             method: 'POST',
+            headers: {
+                'x-auth-token': token
+            },
             body: formDataToSend
         });
         
         if (!response.ok) {
-            let errorMessage = `Erro ${response.status}: ${response.statusText}`;
+            let errorMessage = 'Erro ao enviar documentos';
             try {
                 const errorData = await response.json();
                 errorMessage = errorData.error || errorData.message || errorMessage;
             } catch (e) {
-                // Se não conseguir ler JSON, usar mensagem padrão baseada no status
-                if (response.status === 405) {
-                    errorMessage = 'Método não permitido (405). O endpoint pode não estar configurado corretamente no backend ou o Vercel pode estar bloqueando a requisição. Verifique a configuração do backend no Vercel.';
-                } else if (response.status === 404) {
-                    errorMessage = 'Endpoint não encontrado (404). Verifique se a URL do backend está correta.';
-                } else if (response.status === 500) {
-                    errorMessage = 'Erro interno do servidor (500). Verifique os logs do backend.';
-                } else if (response.status === 0) {
-                    errorMessage = 'Erro de conexão. Verifique se o backend está online e se há problemas de CORS.';
-                }
+                // Usar mensagem padrão
             }
             throw new Error(errorMessage);
         }
         
         const result = await response.json();
-        // console.log('✅ Email enviado com sucesso!', result);
         
         // Show success message
-        showMessage(`Formulário enviado com sucesso! ${result.attachmentsCount || filesCount} anexo(s) enviado(s). Verifique seu email para confirmação. Entraremos em contato em breve.`, 'success');
+        showMessage(`Documentos enviados com sucesso! ${result.attachmentsCount || filesCount} anexo(s) enviado(s). Verifique seu email para confirmação.`, 'success');
         
         // Reset form after 3 seconds
         setTimeout(() => {
-            registerForm.reset();
-            closeModal();
+            if (registerForm) {
+                registerForm.reset();
+            }
+            if (closeModal) {
+                closeModal();
+            }
         }, 3000);
         
     } catch (error) {
-        console.error('❌ Erro ao enviar para backend:', error);
+        // Log de erro genérico sem expor detalhes sensíveis
+        const errorMessage = error.message || 'Erro desconhecido';
         
         // Detectar erro de CORS
-        if (error.message.includes('Failed to fetch') || error.message.includes('CORS') || error.message.includes('NetworkError')) {
-            console.error('🚫 Erro de CORS detectado. O backend precisa ser configurado para aceitar requisições do frontend.');
-            showMessage('Erro de CORS: O backend não está configurado para aceitar requisições deste domínio. Verifique a configuração de CORS no backend (variável FRONTEND_URL deve ser: https://www.novasolidumfinance.com.br).', 'error');
+        if (errorMessage.includes('Failed to fetch') || errorMessage.includes('CORS') || errorMessage.includes('NetworkError')) {
+            showMessage('Erro de conexão. Verifique sua conexão com a internet e tente novamente.', 'error');
         } else {
-            // SEGURANÇA: Email removido do código para evitar exposição
-            // O email de contato deve ser configurado no backend ou exibido apenas na página
-            showMessage(`Erro ao enviar formulário: ${error.message}. Por favor, tente novamente ou entre em contato através do suporte.`, 'error');
+            // SEGURANÇA: Não expor detalhes do erro
+            showMessage('Erro ao enviar documentos. Por favor, tente novamente ou entre em contato através do suporte.', 'error');
         }
     } finally {
         // Re-enable submit button
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Enviar';
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Enviar';
+        }
     }
 }
 
@@ -433,11 +481,8 @@ async function compressImageWithTinify(file, maxSizeKB = 15) {
         const compressedSize = result.compressedSize / 1024;
         const originalSize = result.originalSize / 1024;
         
-        console.log(`✅ Tinify (via backend): ${originalSize.toFixed(2)} KB → ${compressedSize.toFixed(2)} KB`);
-        
         // Se ainda estiver acima do limite, redimensionar
         if (compressedSize > maxSizeKB) {
-            console.log(`⚠️ Tinify comprimiu para ${compressedSize.toFixed(2)} KB, mas precisa de ${maxSizeKB} KB. Redimensionando...`);
             // Converter base64 para blob e redimensionar
             const base64Data = result.base64.split(',')[1];
             const binaryString = atob(base64Data);
@@ -455,11 +500,8 @@ async function compressImageWithTinify(file, maxSizeKB = 15) {
     } catch (error) {
         // Se for erro de network, verificar se backend está rodando
         if (error.message.includes('Failed to fetch') || error.message.includes('Backend não disponível')) {
-            console.warn('⚠️ Backend não disponível. Verifique se o servidor está rodando em', TINIFY_CONFIG.backendUrl);
-            console.warn('💡 Execute: cd backend && npm start');
             throw new Error('BACKEND_ERROR');
         }
-        console.warn('⚠️ Erro ao usar Tinify:', error.message);
         throw error; // Re-throw para usar fallback
     }
 }
@@ -532,13 +574,7 @@ async function compressImage(file, maxSizeKB = 15) {
             const compressed = await compressImageWithTinify(file, maxSizeKB);
             return compressed;
         } catch (error) {
-            // Se for erro de backend, avisar mas não desabilitar
-            if (error.message === 'BACKEND_ERROR') {
-                console.warn('⚠️ Backend não disponível. Usando compressão local.');
-                console.warn('💡 Para usar Tinify, inicie o backend: cd backend && npm start');
-            } else {
-                console.warn('⚠️ Tinify falhou, usando compressão local:', error.message);
-            }
+            // Se for erro de backend, usar método local silenciosamente
             // Continuar com método local
         }
     }
@@ -638,7 +674,7 @@ async function fetchCEP(cep) {
         if (data.erro) return null;
         return data;
     } catch (error) {
-        console.error('Erro ao buscar CEP:', error);
+        // Erro silencioso - não expor detalhes
         return null;
     }
 }
@@ -1032,8 +1068,7 @@ fileInputs.forEach(input => {
             if (file.size > MAX_EMAIL_SIZE) {
                 const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
                 const warning = `⚠️ Arquivo muito grande (${sizeMB} MB). Máximo permitido: 10 MB.`;
-                console.warn(warning);
-                // Mostrar aviso visual (opcional)
+                // Mostrar aviso visual
                 const hint = input.parentElement.querySelector('.file-size-warning');
                 if (hint) {
                     hint.textContent = warning;
@@ -1112,21 +1147,7 @@ if (registerForm) {
             }
         }
         
-        // Validar arquivos (apenas se foram enviados - não são mais obrigatórios)
-        const fileInputsToValidate = accountType === 'PF' 
-            ? ['documentFront', 'documentBack', 'selfie', 'proofOfAddress']
-            : ['articlesOfAssociation', 'cnpjCard', 'adminIdFront', 'adminIdBack', 'companyProofOfAddress', 'ecnpjCertificate'];
-        
-        for (const inputId of fileInputsToValidate) {
-            const input = document.getElementById(inputId);
-            if (input && input.files.length > 0) {
-                const validation = validateFile(input.files[0]);
-                if (!validation.valid) {
-                    showMessage(`${validation.error} (${inputId})`, 'error');
-                    return;
-                }
-            }
-        }
+        // Arquivos não são mais validados aqui - serão enviados em etapa separada
         
         // Show loading message
         showMessage('Enviando formulário...', 'loading');
@@ -1216,8 +1237,13 @@ if (registerForm) {
                 };
             }
             
-            // Enviar formulário para o backend
-            await sendFormToBackend(formData, accountType, submitBtn);
+            // Remover campos de documentos do formData antes de enviar (ETAPA 1)
+            // Os documentos serão enviados na ETAPA 2
+            const initialFormData = { ...formData };
+            // Não incluir arquivos na primeira etapa
+            
+            // Enviar cadastro inicial (ETAPA 1) - sem documentos
+            await sendInitialRegistration(initialFormData, accountType, submitBtn);
         } finally {
             // Re-enable submit button
             submitBtn.disabled = false;
@@ -1312,7 +1338,7 @@ async function fetchCryptoPricesFromCoinGecko() {
         
         return true;
     } catch (error) {
-        console.error('CoinGecko API error:', error);
+        // Erro silencioso
         return false;
     }
 }
@@ -1353,7 +1379,7 @@ async function fetchCryptoPricesFromBinance() {
                     return { item, price, change };
                 }
             } catch (error) {
-                console.error(`Error fetching ${mapping.binance}:`, error);
+                // Erro silencioso
             }
             
             return null;
@@ -1371,7 +1397,7 @@ async function fetchCryptoPricesFromBinance() {
         
         return updated;
     } catch (error) {
-        console.error('Binance API error:', error);
+        // Erro silencioso
         return false;
     }
 }
@@ -1381,7 +1407,6 @@ async function fetchCryptoPrices() {
     const cryptoItems = document.querySelectorAll('.crypto-item[data-coin-id]');
     
     if (cryptoItems.length === 0) {
-        console.warn('No crypto items found');
         return;
     }
     
@@ -1390,12 +1415,10 @@ async function fetchCryptoPrices() {
     
     // If CoinGecko fails, try Binance
     if (!success) {
-        console.log('CoinGecko failed, trying Binance...');
         success = await fetchCryptoPricesFromBinance();
     }
     
     if (!success) {
-        console.error('All APIs failed');
         // Show error in UI
         cryptoItems.forEach(item => {
             const priceElement = item.querySelector('.price-amount');
