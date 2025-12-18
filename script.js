@@ -762,10 +762,8 @@ if (pepStatusCheckbox) {
     pepStatusCheckbox.addEventListener('change', (e) => {
         if (e.target.checked) {
             pepDetailsGroup.style.display = 'block';
-            pepPositionInput.setAttribute('required', 'required');
         } else {
             pepDetailsGroup.style.display = 'none';
-            pepPositionInput.removeAttribute('required');
             pepPositionInput.value = '';
         }
     });
@@ -1068,11 +1066,7 @@ if (registerForm) {
                 return;
             }
             
-            const pepStatus = document.getElementById('pepStatus').checked;
-            if (pepStatus && !document.getElementById('pepPosition').value) {
-                showMessage('Por favor, informe o cargo/função se você é PEP.', 'error');
-                return;
-            }
+            // Validação de PEP removida - campo opcional
         } else {
             const cnpj = document.getElementById('cnpj').value.replace(/\D/g, '');
             if (!validateCNPJ(cnpj)) {
