@@ -106,8 +106,8 @@ function closeModal() {
 // Button click handlers - open modal
 document.querySelectorAll('.btn-primary').forEach(button => {
     button.addEventListener('click', (e) => {
-        // Check if button is not the submit button inside the form
-        if (!button.closest('.register-form')) {
+        // Check if button is not the submit button inside the form and doesn't have the no-modal class
+        if (!button.closest('.register-form') && !button.classList.contains('no-modal')) {
             e.preventDefault();
             openModal();
         }
