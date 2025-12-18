@@ -143,9 +143,7 @@ document.addEventListener('keydown', (e) => {
 // SEGURANÇA: URLs do backend são públicas, mas não expõem credenciais
 // Todas as chaves de API e senhas estão armazenadas no backend
 const BACKEND_CONFIG = {
-    url: 'https://back-end-nova.vercel.app/api/email/send', // URL do backend no Vercel (legado)
-    registerUrl: 'https://back-end-nova.vercel.app/api/register/initial', // Nova rota para cadastro inicial
-    documentsUrl: 'https://back-end-nova.vercel.app/api/register/documents' // Nova rota para envio de documentos
+    url: 'https://back-end-nova.vercel.app/api/email/send' // URL do backend no Vercel
 };
 
 // Function to show message
@@ -157,66 +155,14 @@ function showMessage(message, type) {
     formMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-// Função para enviar cadastro inicial (ETAPA 1) - sem documentos
-async function sendInitialRegistration(formData, accountType, submitBtn) {
-    try {
-        // Enviar apenas dados básicos (sem documentos)
-        const response = await fetch(BACKEND_CONFIG.registerUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(formData)
-        });
-        
-        if (!response.ok) {
-            let errorMessage = 'Erro ao processar cadastro';
-            try {
-                const errorData = await response.json();
-                errorMessage = errorData.error || errorData.message || errorMessage;
-            } catch (e) {
-                // Usar mensagem padrão
-            }
-            throw new Error(errorMessage);
-        }
-        
-        const result = await response.json();
-        
-        // Show success message
-        showMessage('Cadastro realizado com sucesso! Verifique seu email para enviar os documentos.', 'success');
-        
-        // Reset form after 3 seconds
-        setTimeout(() => {
-            registerForm.reset();
-            closeModal();
-        }, 3000);
-        
-    } catch (error) {
-        // Log de erro genérico sem expor detalhes sensíveis
-        const errorMessage = error.message || 'Erro desconhecido';
-        
-        // Detectar erro de CORS
-        if (errorMessage.includes('Failed to fetch') || errorMessage.includes('CORS') || errorMessage.includes('NetworkError')) {
-            showMessage('Erro de conexão. Verifique sua conexão com a internet e tente novamente.', 'error');
-        } else {
-            // SEGURANÇA: Não expor detalhes do erro
-            showMessage('Erro ao enviar cadastro. Por favor, tente novamente ou entre em contato através do suporte.', 'error');
-        }
-    } finally {
-        // Re-enable submit button
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Enviar';
-    }
-}
-
-// Função para enviar documentos (ETAPA 2) - requer token
-async function sendDocumentsToBackend(formData, accountType, submitBtn, token) {
+// Função para enviar formulário para o backend
+async function sendFormToBackend(formData, accountType, submitBtn) {
     try {
         // Criar FormData para enviar arquivos
         const formDataToSend = new FormData();
         
-        // Adicionar token
-        formDataToSend.append('token', token);
+        // Adicionar dados do formulário como JSON
+        formDataToSend.append('formData', JSON.stringify(formData));
         
         // Adicionar arquivos
         const fileFields = accountType === 'PF'
@@ -233,22 +179,28 @@ async function sendDocumentsToBackend(formData, accountType, submitBtn, token) {
             }
         }
         
-        // Enviar para o backend com token no header
-        const response = await fetch(BACKEND_CONFIG.documentsUrl, {
+        // Enviar para o backend
+        const response = await fetch(BACKEND_CONFIG.url, {
             method: 'POST',
-            headers: {
-                'x-auth-token': token
-            },
             body: formDataToSend
         });
         
         if (!response.ok) {
-            let errorMessage = 'Erro ao enviar documentos';
+            let errorMessage = `Erro ${response.status}: ${response.statusText}`;
             try {
                 const errorData = await response.json();
                 errorMessage = errorData.error || errorData.message || errorMessage;
             } catch (e) {
-                // Usar mensagem padrão
+                // Se não conseguir ler JSON, usar mensagem padrão baseada no status
+                if (response.status === 405) {
+                    errorMessage = 'Método não permitido (405). O endpoint pode não estar configurado corretamente no backend ou o Vercel pode estar bloqueando a requisição. Verifique a configuração do backend no Vercel.';
+                } else if (response.status === 404) {
+                    errorMessage = 'Endpoint não encontrado (404). Verifique se a URL do backend está correta.';
+                } else if (response.status === 500) {
+                    errorMessage = 'Erro interno do servidor (500). Verifique os logs do backend.';
+                } else if (response.status === 0) {
+                    errorMessage = 'Erro de conexão. Verifique se o backend está online e se há problemas de CORS.';
+                }
             }
             throw new Error(errorMessage);
         }
@@ -256,16 +208,12 @@ async function sendDocumentsToBackend(formData, accountType, submitBtn, token) {
         const result = await response.json();
         
         // Show success message
-        showMessage(`Documentos enviados com sucesso! ${result.attachmentsCount || filesCount} anexo(s) enviado(s). Verifique seu email para confirmação.`, 'success');
+        showMessage(`Formulário enviado com sucesso! ${result.attachmentsCount || filesCount} anexo(s) enviado(s). Verifique seu email para confirmação. Entraremos em contato em breve.`, 'success');
         
         // Reset form after 3 seconds
         setTimeout(() => {
-            if (registerForm) {
-                registerForm.reset();
-            }
-            if (closeModal) {
-                closeModal();
-            }
+            registerForm.reset();
+            closeModal();
         }, 3000);
         
     } catch (error) {
@@ -277,14 +225,12 @@ async function sendDocumentsToBackend(formData, accountType, submitBtn, token) {
             showMessage('Erro de conexão. Verifique sua conexão com a internet e tente novamente.', 'error');
         } else {
             // SEGURANÇA: Não expor detalhes do erro
-            showMessage('Erro ao enviar documentos. Por favor, tente novamente ou entre em contato através do suporte.', 'error');
+            showMessage('Erro ao enviar formulário. Por favor, tente novamente ou entre em contato através do suporte.', 'error');
         }
     } finally {
         // Re-enable submit button
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Enviar';
-        }
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Enviar';
     }
 }
 
@@ -1231,13 +1177,8 @@ if (registerForm) {
                 };
             }
             
-            // Remover campos de documentos do formData antes de enviar (ETAPA 1)
-            // Os documentos serão enviados na ETAPA 2
-            const initialFormData = { ...formData };
-            // Não incluir arquivos na primeira etapa
-            
-            // Enviar cadastro inicial (ETAPA 1) - sem documentos
-            await sendInitialRegistration(initialFormData, accountType, submitBtn);
+            // Enviar formulário para o backend (Tudo em uma etapa)
+            await sendFormToBackend(formData, accountType, submitBtn);
         } finally {
             // Re-enable submit button
             submitBtn.disabled = false;

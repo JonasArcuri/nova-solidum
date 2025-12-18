@@ -694,13 +694,30 @@
                         </div>
                     </div>
 
-                    <!-- Documentos serão enviados em etapa separada após confirmação por email -->
-                    <div class="form-group" style="background-color: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 15px; margin-top: 20px;">
-                        <p style="margin: 0; color: #0369a1; font-size: 14px; line-height: 1.6;">
-                            <strong>📧 Envio de Documentos em Etapa Separada</strong><br>
-                            Após o cadastro, você receberá um email com um link seguro para enviar seus documentos. 
-                            Isso garante maior segurança e proteção dos seus dados.
-                        </p>
+                    <h3 class="form-section-title">Documentos (Upload)</h3>
+                    <div class="form-group">
+                        <label for="documentFront">RG/CNH - Frente *</label>
+                        <input type="file" id="documentFront" name="documentFront" accept="image/jpeg,image/png,application/pdf">
+                        <small class="form-hint">JPG, PNG ou PDF (máx. 10MB para upload, imagens serão comprimidas automaticamente para até 15KB com boa qualidade)</small>
+                        <small class="file-size-warning" style="display: none; color: #dc2626; font-weight: 600;"></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="documentBack">RG/CNH - Verso *</label>
+                        <input type="file" id="documentBack" name="documentBack" accept="image/jpeg,image/png,application/pdf">
+                        <small class="form-hint">JPG, PNG ou PDF (máx. 10MB para upload, imagens serão comprimidas automaticamente para até 15KB com boa qualidade)</small>
+                        <small class="file-size-warning" style="display: none; color: #dc2626; font-weight: 600;"></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="selfie">Selfie (Opcional)</label>
+                        <input type="file" id="selfie" name="selfie" accept="image/jpeg,image/png">
+                        <small class="form-hint">Melhora a segurança antifraude (será comprimida automaticamente para até 15KB com boa qualidade)</small>
+                        <small class="file-size-warning" style="display: none; color: #dc2626; font-weight: 600;"></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="proofOfAddress">Comprovante de Endereço *</label>
+                        <input type="file" id="proofOfAddress" name="proofOfAddress" accept="image/jpeg,image/png,application/pdf">
+                        <small class="form-hint">Conta de consumo até 90 dias (máx. 10MB para upload, será comprimida automaticamente para até 15KB com boa qualidade)</small>
+                        <small class="file-size-warning" style="display: none; color: #dc2626; font-weight: 600;"></small>
                     </div>
                 </div>
 
@@ -812,13 +829,41 @@
                         </div>
                     </div>
 
-                    <!-- Documentos serão enviados em etapa separada após confirmação por email -->
-                    <div class="form-group" style="background-color: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 15px; margin-top: 20px;">
-                        <p style="margin: 0; color: #0369a1; font-size: 14px; line-height: 1.6;">
-                            <strong>📧 Envio de Documentos em Etapa Separada</strong><br>
-                            Após o cadastro, você receberá um email com um link seguro para enviar seus documentos. 
-                            Isso garante maior segurança e proteção dos seus dados.
-                        </p>
+                    <h3 class="form-section-title">Documentos da Empresa (Upload)</h3>
+                    <div class="form-group">
+                        <label for="articlesOfAssociation">Contrato Social/Alterações *</label>
+                        <input type="file" id="articlesOfAssociation" name="articlesOfAssociation" accept="application/pdf">
+                        <small class="form-hint">PDF (máx. 10MB para upload)</small>
+                        <small class="file-size-warning" style="display: none; color: #dc2626; font-weight: 600;"></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="cnpjCard">Comprovante CNPJ *</label>
+                        <input type="file" id="cnpjCard" name="cnpjCard" accept="image/jpeg,image/png,application/pdf">
+                        <small class="form-hint">JPG, PNG ou PDF (máx. 10MB para upload, imagens serão comprimidas automaticamente para até 15KB com boa qualidade)</small>
+                        <small class="file-size-warning" style="display: none; color: #dc2626; font-weight: 600;"></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="adminIdFront">RG/CNH Administrador - Frente *</label>
+                        <input type="file" id="adminIdFront" name="adminIdFront" accept="image/jpeg,image/png,application/pdf">
+                        <small class="form-hint">JPG, PNG ou PDF (máx. 10MB para upload, imagens serão comprimidas automaticamente para até 15KB com boa qualidade)</small>
+                        <small class="file-size-warning" style="display: none; color: #dc2626; font-weight: 600;"></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="adminIdBack">RG/CNH Administrador - Verso *</label>
+                        <input type="file" id="adminIdBack" name="adminIdBack" accept="image/jpeg,image/png,application/pdf">
+                        <small class="form-hint">JPG, PNG ou PDF (máx. 10MB para upload, imagens serão comprimidas automaticamente para até 15KB com boa qualidade)</small>
+                        <small class="file-size-warning" style="display: none; color: #dc2626; font-weight: 600;"></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="companyProofOfAddress">Comprovante de Endereço da Empresa *</label>
+                        <input type="file" id="companyProofOfAddress" name="companyProofOfAddress" accept="image/jpeg,image/png,application/pdf">
+                        <small class="form-hint">JPG, PNG ou PDF (máx. 10MB para upload, imagens serão comprimidas automaticamente para até 15KB com boa qualidade)</small>
+                        <small class="file-size-warning" style="display: none; color: #dc2626; font-weight: 600;"></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="ecnpjCertificate">Certificado e-CNPJ (Opcional)</label>
+                        <input type="file" id="ecnpjCertificate" name="ecnpjCertificate" accept=".pfx">
+                        <small class="form-hint">Arquivo .pfx para assinatura de NF/boletos</small>
                     </div>
                 </div>
 

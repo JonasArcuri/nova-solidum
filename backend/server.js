@@ -416,7 +416,6 @@ app.post('/api/email/send', uploadMultiple.fields([
                     content: file.buffer,
                     contentType: file.mimetype
                 });
-                console.log(`📎 Anexo adicionado: ${file.originalname} (${(file.size / 1024).toFixed(2)} KB)`);
             }
         });
 
@@ -439,7 +438,6 @@ app.post('/api/email/send', uploadMultiple.fields([
         };
 
         const emailResult = await transporter.sendMail(mailOptions);
-        console.log('✅ Email enviado para empresa:', emailResult.messageId);
 
         // Enviar email de confirmação para o usuário
         const userConfirmationHtml = `
@@ -467,7 +465,6 @@ app.post('/api/email/send', uploadMultiple.fields([
         };
 
         await transporter.sendMail(userMailOptions);
-        console.log('✅ Email de confirmação enviado para usuário:', userEmail);
 
         res.json({
             success: true,
@@ -599,8 +596,6 @@ app.post('/api/tinify/compress', upload.single('image'), async (req, res) => {
             return res.status(400).json({ error: 'Arquivo muito grande (máx. 5MB)' });
         }
 
-        console.log(`📤 Comprimindo imagem: ${req.file.originalname} (${(req.file.size / 1024).toFixed(2)} KB)`);
-
         // Fazer requisição para Tinify
         const tinifyResponse = await fetch('https://api.tinify.com/shrink', {
             method: 'POST',
@@ -646,8 +641,6 @@ app.post('/api/tinify/compress', upload.single('image'), async (req, res) => {
         const compressedArrayBuffer = await compressedResponse.arrayBuffer();
         const compressedBuffer = Buffer.from(compressedArrayBuffer);
         const compressedSize = compressedBuffer.length;
-
-        console.log(`✅ Compressão concluída: ${(compressedSize / 1024).toFixed(2)} KB`);
 
         // Converter para base64
         const base64 = compressedBuffer.toString('base64');
