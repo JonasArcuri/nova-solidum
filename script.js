@@ -920,9 +920,9 @@ if (cpfInput) {
         const isForeigner = document.getElementById('isForeigner')?.checked || false;
         const cpf = e.target.value.replace(/\D/g, '');
         
-        // Se não é estrangeiro e CPF está vazio, mostrar erro
-        if (!isForeigner && !cpf) {
-            e.target.setCustomValidity('CPF é obrigatório para brasileiros');
+        // CPF agora é obrigatório para todos
+        if (!cpf) {
+            e.target.setCustomValidity('CPF é obrigatório');
             e.target.reportValidity();
         } else if (cpf.length === 11 && !validateCPF(cpf)) {
             e.target.setCustomValidity('CPF inválido');
@@ -966,17 +966,11 @@ if (isForeignerCheckbox) {
     function updateForeignerFields() {
         const isForeigner = isForeignerCheckbox.checked;
         
-        // Atualizar CPF
+        // Atualizar CPF - Sempre obrigatório agora
         if (cpfInput) {
-            if (isForeigner) {
-                cpfInput.removeAttribute('required');
-                if (cpfRequiredLabel) cpfRequiredLabel.style.display = 'none';
-                if (cpfHint) cpfHint.textContent = 'Opcional para estrangeiros';
-            } else {
-                cpfInput.setAttribute('required', 'required');
-                if (cpfRequiredLabel) cpfRequiredLabel.style.display = 'inline';
-                if (cpfHint) cpfHint.textContent = 'Obrigatório para brasileiros';
-            }
+            cpfInput.setAttribute('required', 'required');
+            if (cpfRequiredLabel) cpfRequiredLabel.style.display = 'inline';
+            if (cpfHint) cpfHint.textContent = 'Obrigatório';
         }
         
         // Atualizar campos de endereço (todos opcionais agora)
