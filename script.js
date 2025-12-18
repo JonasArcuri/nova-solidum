@@ -1087,7 +1087,7 @@ if (registerForm) {
             }
         }
         
-        // Arquivos não são mais validados aqui - serão enviados em etapa separada
+        // Documentos e fotos são opcionais conforme solicitado pelo usuário
         
         // Show loading message
         showMessage('Enviando formulário...', 'loading');
