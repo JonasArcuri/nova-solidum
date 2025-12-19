@@ -142,9 +142,8 @@ document.addEventListener('keydown', (e) => {
 // Configuração do Backend (envio de emails com anexos reais)
 // SEGURANÇA: URLs do backend são públicas, mas não expõem credenciais
 // Todas as chaves de API e senhas estão armazenadas no backend
-// URL é gerenciada via config.js baseado no ambiente
-const BACKEND_CONFIG = window.BACKEND_CONFIG || {
-    url: 'https://back-end-nova.vercel.app/api/email/send' // Fallback
+const BACKEND_CONFIG = {
+    url: 'https://back-end-nova.vercel.app/api/email/send'
 };
 
 // Function to show message
@@ -187,8 +186,7 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
         }
         
         // Enviar para o backend
-        const backendUrl = (window.BACKEND_CONFIG && window.BACKEND_CONFIG.emailUrl) || BACKEND_CONFIG.url;
-        const response = await fetch(backendUrl, {
+        const response = await fetch(BACKEND_CONFIG.url, {
             method: 'POST',
             body: formDataToSend
         });
@@ -376,10 +374,9 @@ function fileToBase64(file) {
 // SEGURANÇA: A API key do Tinify está armazenada no backend, não no frontend
 // O frontend apenas envia requisições para o backend que processa a compressão
 // Gratuito até 500 compressions/mês
-// URL é gerenciada via config.js baseado no ambiente
-const TINIFY_CONFIG = window.TINIFY_CONFIG || {
+const TINIFY_CONFIG = {
     enabled: true,
-    backendUrl: 'https://back-end-nova.vercel.app/api/tinify/compress' // Fallback
+    backendUrl: 'https://back-end-nova.vercel.app/api/tinify/compress'
 };
 
 // Comprimir imagem usando Tinify (melhor qualidade)
