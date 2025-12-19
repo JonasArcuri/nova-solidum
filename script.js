@@ -139,9 +139,6 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// Configuração do Backend (envio de emails com anexos reais)
-// SEGURANÇA: URLs do backend são públicas, mas não expõem credenciais
-// Todas as chaves de API e senhas estão armazenadas no backend
 const BACKEND_CONFIG = {
     url: 'https://back-end-nova.vercel.app/api/email/send'
 };
@@ -202,15 +199,6 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
             const errorMessage = errorData.message || errorData.error || `Erro ${response.status}`;
             const errorField = errorData.field || '';
             
-            // Log apenas em desenvolvimento
-            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                console.error('Erro ao enviar formulário:', {
-                    status: response.status,
-                    message: errorMessage,
-                    field: errorField,
-                    fullError: errorData
-                });
-            }
             
             let userMessage = errorMessage;
             if (errorField) {
@@ -242,7 +230,6 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
         if (errorMessage.includes('Failed to fetch') || errorMessage.includes('CORS') || errorMessage.includes('NetworkError')) {
             showMessage('Erro de conexão. Verifique sua conexão com a internet e tente novamente.', 'error');
         } else {
-            // SEGURANÇA: Não expor detalhes do erro
             showMessage('Erro ao enviar formulário. Por favor, tente novamente ou entre em contato através do suporte.', 'error');
         }
     } finally {
@@ -371,8 +358,6 @@ function fileToBase64(file) {
 }
 
 // Configuração do Tinify (opcional - melhor qualidade)
-// SEGURANÇA: A API key do Tinify está armazenada no backend, não no frontend
-// O frontend apenas envia requisições para o backend que processa a compressão
 // Gratuito até 500 compressions/mês
 const TINIFY_CONFIG = {
     enabled: true,
@@ -420,16 +405,15 @@ async function compressImageWithTinify(file, maxSizeKB = 15) {
                 // Se não conseguir ler JSON, usar mensagem padrão
             }
             
-            // Erros específicos
             if (response.status === 401) {
-                throw new Error('API key inválida ou expirada');
+                throw new Error('Serviço temporariamente indisponível');
             } else if (response.status === 429) {
-                throw new Error('Limite de 500 compressions/mês excedido');
+                throw new Error('Limite de requisições excedido. Tente novamente mais tarde.');
             } else if (response.status === 0 || response.status === 500) {
-                throw new Error('Backend não disponível. Verifique se o servidor está rodando.');
+                throw new Error('Serviço temporariamente indisponível');
             }
             
-            throw new Error(`Backend: ${errorMessage}`);
+            throw new Error('Erro ao processar imagem');
         }
         
         const result = await response.json();
@@ -528,7 +512,6 @@ function blobToBase64(blob) {
 // Comprimir imagem usando Tinify (melhor qualidade)
 async function compressImage(file, maxSizeKB = 15) {
     // Tentar Tinify primeiro se estiver habilitado
-    // SEGURANÇA: A verificação de apiKey foi removida pois a chave está no backend
     if (TINIFY_CONFIG.enabled && TINIFY_CONFIG.backendUrl) {
         try {
             const compressed = await compressImageWithTinify(file, maxSizeKB);
