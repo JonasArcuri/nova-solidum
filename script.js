@@ -194,23 +194,35 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
         });
         
         if (!response.ok) {
-            let errorMessage = `Erro ${response.status}: ${response.statusText}`;
+            let errorData;
             try {
-                const errorData = await response.json();
-                errorMessage = errorData.error || errorData.message || errorMessage;
+                errorData = await response.json();
             } catch (e) {
-                // Se não conseguir ler JSON, usar mensagem padrão baseada no status
-                if (response.status === 405) {
-                    errorMessage = 'Método não permitido (405). O endpoint pode não estar configurado corretamente no backend ou o Vercel pode estar bloqueando a requisição. Verifique a configuração do backend no Vercel.';
-                } else if (response.status === 404) {
-                    errorMessage = 'Endpoint não encontrado (404). Verifique se a URL do backend está correta.';
-                } else if (response.status === 500) {
-                    errorMessage = 'Erro interno do servidor (500). Verifique os logs do backend.';
-                } else if (response.status === 0) {
-                    errorMessage = 'Erro de conexão. Verifique se o backend está online e se há problemas de CORS.';
-                }
+                errorData = { error: 'Erro desconhecido', message: `Status ${response.status}` };
             }
-            throw new Error(errorMessage);
+            
+            const errorMessage = errorData.message || errorData.error || `Erro ${response.status}`;
+            const errorField = errorData.field || '';
+            
+            // Log apenas em desenvolvimento
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                console.error('Erro ao enviar formulário:', {
+                    status: response.status,
+                    message: errorMessage,
+                    field: errorField,
+                    fullError: errorData
+                });
+            }
+            
+            let userMessage = errorMessage;
+            if (errorField) {
+                userMessage = `${errorMessage} (Campo: ${errorField})`;
+            }
+            
+            showMessage(userMessage, 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Enviar';
+            return;
         }
         
         const result = await response.json();

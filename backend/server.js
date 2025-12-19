@@ -84,6 +84,7 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Rate Limiting - 5 requisições por minuto por IP
 const emailRateLimiter = rateLimit({
@@ -559,7 +560,10 @@ app.post('/api/email/send', emailRateLimiter, uploadMultiple.fields([
         }
 
         // Verificar honeypot (campo oculto que bots preenchem)
-        if (req.body.honeypot && req.body.honeypot !== '') {
+        // O honeypot vem como campo de texto no FormData, acessível via req.body
+        const honeypotValue = req.body.honeypot || '';
+        if (honeypotValue && honeypotValue.trim() !== '') {
+            safeLogger('warn', 'Tentativa de envio bloqueada por honeypot');
             return res.status(400).json({ 
                 error: 'Requisição inválida',
                 message: 'Requisição bloqueada por segurança.'
@@ -567,29 +571,60 @@ app.post('/api/email/send', emailRateLimiter, uploadMultiple.fields([
         }
         
         // Extrair dados do formulário
-        const formData = JSON.parse(req.body.formData || '{}');
+        if (!req.body.formData) {
+            return res.status(400).json({ 
+                error: 'Dados do formulário não fornecidos',
+                message: 'O campo formData é obrigatório.'
+            });
+        }
+        
+        let formData;
+        try {
+            formData = JSON.parse(req.body.formData);
+        } catch (parseError) {
+            safeLogger('error', 'Erro ao fazer parse do formData', parseError);
+            return res.status(400).json({ 
+                error: 'Dados do formulário inválidos',
+                message: 'Formato JSON inválido.'
+            });
+        }
+        
         const accountType = formData.accountType || 'PF';
         
-        // Validações de dados
+        // Validações de dados - apenas validar se o campo existir e não estiver vazio
         if (accountType === 'PF') {
-            if (formData.cpf && !validateCPF(formData.cpf)) {
-                return res.status(400).json({ error: 'CPF inválido' });
+            if (formData.cpf && formData.cpf.trim() !== '') {
+                const cpfClean = formData.cpf.replace(/[^\d]/g, '');
+                if (cpfClean.length > 0 && !validateCPF(formData.cpf)) {
+                    return res.status(400).json({ error: 'CPF inválido', field: 'cpf' });
+                }
             }
-            if (formData.email && !validateEmail(formData.email)) {
-                return res.status(400).json({ error: 'Email inválido' });
+            if (formData.email && formData.email.trim() !== '') {
+                if (!validateEmail(formData.email)) {
+                    return res.status(400).json({ error: 'Email inválido', field: 'email' });
+                }
             }
-            if (formData.phone && !validatePhone(formData.phone)) {
-                return res.status(400).json({ error: 'Telefone inválido' });
+            if (formData.phone && formData.phone.trim() !== '') {
+                if (!validatePhone(formData.phone)) {
+                    return res.status(400).json({ error: 'Telefone inválido', field: 'phone' });
+                }
             }
         } else {
-            if (formData.cnpj && !validateCNPJ(formData.cnpj)) {
-                return res.status(400).json({ error: 'CNPJ inválido' });
+            if (formData.cnpj && formData.cnpj.trim() !== '') {
+                const cnpjClean = formData.cnpj.replace(/[^\d]/g, '');
+                if (cnpjClean.length > 0 && !validateCNPJ(formData.cnpj)) {
+                    return res.status(400).json({ error: 'CNPJ inválido', field: 'cnpj' });
+                }
             }
-            if (formData.companyEmail && !validateEmail(formData.companyEmail)) {
-                return res.status(400).json({ error: 'Email inválido' });
+            if (formData.companyEmail && formData.companyEmail.trim() !== '') {
+                if (!validateEmail(formData.companyEmail)) {
+                    return res.status(400).json({ error: 'Email inválido', field: 'companyEmail' });
+                }
             }
-            if (formData.companyPhone && !validatePhone(formData.companyPhone)) {
-                return res.status(400).json({ error: 'Telefone inválido' });
+            if (formData.companyPhone && formData.companyPhone.trim() !== '') {
+                if (!validatePhone(formData.companyPhone)) {
+                    return res.status(400).json({ error: 'Telefone inválido', field: 'companyPhone' });
+                }
             }
         }
         
