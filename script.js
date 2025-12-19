@@ -142,8 +142,9 @@ document.addEventListener('keydown', (e) => {
 // Configuração do Backend (envio de emails com anexos reais)
 // SEGURANÇA: URLs do backend são públicas, mas não expõem credenciais
 // Todas as chaves de API e senhas estão armazenadas no backend
-const BACKEND_CONFIG = {
-    url: 'https://back-end-nova.vercel.app/api/email/send' // URL do backend no Vercel
+// URL é gerenciada via config.js baseado no ambiente
+const BACKEND_CONFIG = window.BACKEND_CONFIG || {
+    url: 'https://back-end-nova.vercel.app/api/email/send' // Fallback
 };
 
 // Function to show message
@@ -160,6 +161,12 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
     try {
         // Criar FormData para enviar arquivos
         const formDataToSend = new FormData();
+        
+        // Adicionar honeypot (campo oculto anti-bot)
+        const honeypotField = document.getElementById('honeypot');
+        if (honeypotField) {
+            formDataToSend.append('honeypot', honeypotField.value || '');
+        }
         
         // Adicionar dados do formulário como JSON
         formDataToSend.append('formData', JSON.stringify(formData));
@@ -180,7 +187,8 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
         }
         
         // Enviar para o backend
-        const response = await fetch(BACKEND_CONFIG.url, {
+        const backendUrl = (window.BACKEND_CONFIG && window.BACKEND_CONFIG.emailUrl) || BACKEND_CONFIG.url;
+        const response = await fetch(backendUrl, {
             method: 'POST',
             body: formDataToSend
         });
@@ -356,13 +364,10 @@ function fileToBase64(file) {
 // SEGURANÇA: A API key do Tinify está armazenada no backend, não no frontend
 // O frontend apenas envia requisições para o backend que processa a compressão
 // Gratuito até 500 compressions/mês
-const TINIFY_CONFIG = {
-    enabled: true, // Habilitado - usando backend para compressão
-    // NOTA: apiKey removida por segurança - a chave está no backend
-    apiUrl: 'https://api.tinify.com/shrink', // URL da API (não usada diretamente)
-    // IMPORTANTE: Substitua pela URL do seu backend hospedado no Vercel
-    // Exemplo: 'https://seu-backend.vercel.app/api/tinify/compress'
-    backendUrl: 'https://back-end-nova.vercel.app/api/tinify/compress' // URL do backend proxy no Vercel
+// URL é gerenciada via config.js baseado no ambiente
+const TINIFY_CONFIG = window.TINIFY_CONFIG || {
+    enabled: true,
+    backendUrl: 'https://back-end-nova.vercel.app/api/tinify/compress' // Fallback
 };
 
 // Comprimir imagem usando Tinify (melhor qualidade)

@@ -4,18 +4,178 @@ const fetch = require('node-fetch');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Configuração CORS - permitir requisições do frontend
-app.use(cors({
-    origin: process.env.FRONTEND_URL || '*', // Em produção, especifique a URL do frontend
-    credentials: true
-}));
+// Função para sanitizar logs e remover dados sensíveis
+function safeLogger(level, message, error = null) {
+    if (process.env.NODE_ENV === 'production') {
+        // Em produção, apenas logar mensagens genéricas
+        const safeMessage = message || 'Erro interno do servidor';
+        if (level === 'error') {
+            console.error(`[${new Date().toISOString()}] ${safeMessage}`);
+            if (error) {
+                // Logar apenas status code e tipo de erro, nunca o conteúdo
+                console.error(`[${new Date().toISOString()}] Status: ${error.status || 'N/A'}, Type: ${error.name || 'Error'}`);
+            }
+        } else if (level === 'warn') {
+            console.warn(`[${new Date().toISOString()}] ${safeMessage}`);
+        } else {
+            console.log(`[${new Date().toISOString()}] ${safeMessage}`);
+        }
+    } else {
+        // Em desenvolvimento, logar detalhes completos
+        if (level === 'error') {
+            console.error(message, error);
+        } else if (level === 'warn') {
+            console.warn(message);
+        } else {
+            console.log(message);
+        }
+    }
+}
+
+// Configuração CORS - Allowlist por segurança
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS 
+    ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+    : ['https://www.novasolidumfinance.com.br', 'https://novasolidumfinance.com.br'];
+
+// Middleware CORS customizado com allowlist
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    
+    // Verificar se origin está na allowlist
+    if (origin && ALLOWED_ORIGINS.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Vary', 'Origin');
+    }
+    
+    // Headers permitidos
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-auth-token');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    
+    // Responder a preflight requests
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
+    
+    next();
+});
+
+// Middleware de Security Headers
+app.use((req, res, next) => {
+    // Headers de segurança
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+    
+    // HSTS apenas em produção (HTTPS)
+    if (process.env.NODE_ENV === 'production' || req.secure || req.headers['x-forwarded-proto'] === 'https') {
+        res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+    }
+    
+    next();
+});
 
 app.use(express.json());
+
+// Rate Limiting - 5 requisições por minuto por IP
+const emailRateLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minuto
+    max: 5, // 5 requisições por IP
+    message: 'Muitas requisições. Por favor, tente novamente em alguns instantes.',
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Funções de validação
+function validateCPF(cpf) {
+    if (!cpf) return false;
+    cpf = cpf.replace(/[^\d]/g, '');
+    if (cpf.length !== 11) return false;
+    if (/^(\d)\1{10}$/.test(cpf)) return false; // Todos os dígitos iguais
+    
+    let sum = 0;
+    for (let i = 0; i < 9; i++) {
+        sum += parseInt(cpf.charAt(i)) * (10 - i);
+    }
+    let digit = 11 - (sum % 11);
+    if (digit >= 10) digit = 0;
+    if (digit !== parseInt(cpf.charAt(9))) return false;
+    
+    sum = 0;
+    for (let i = 0; i < 10; i++) {
+        sum += parseInt(cpf.charAt(i)) * (11 - i);
+    }
+    digit = 11 - (sum % 11);
+    if (digit >= 10) digit = 0;
+    if (digit !== parseInt(cpf.charAt(10))) return false;
+    
+    return true;
+}
+
+function validateCNPJ(cnpj) {
+    if (!cnpj) return false;
+    cnpj = cnpj.replace(/[^\d]/g, '');
+    if (cnpj.length !== 14) return false;
+    if (/^(\d)\1{13}$/.test(cnpj)) return false; // Todos os dígitos iguais
+    
+    let length = cnpj.length - 2;
+    let numbers = cnpj.substring(0, length);
+    const digits = cnpj.substring(length);
+    let sum = 0;
+    let pos = length - 7;
+    
+    for (let i = length; i >= 1; i--) {
+        sum += numbers.charAt(length - i) * pos--;
+        if (pos < 2) pos = 9;
+    }
+    let result = sum % 11 < 2 ? 0 : 11 - sum % 11;
+    if (result !== parseInt(digits.charAt(0))) return false;
+    
+    length = length + 1;
+    numbers = cnpj.substring(0, length);
+    sum = 0;
+    pos = length - 7;
+    for (let i = length; i >= 1; i--) {
+        sum += numbers.charAt(length - i) * pos--;
+        if (pos < 2) pos = 9;
+    }
+    result = sum % 11 < 2 ? 0 : 11 - sum % 11;
+    if (result !== parseInt(digits.charAt(1))) return false;
+    
+    return true;
+}
+
+function validateEmail(email) {
+    if (!email) return false;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return false;
+    
+    // Validar domínio básico
+    const domain = email.split('@')[1];
+    if (!domain || domain.length < 4) return false;
+    if (!domain.includes('.')) return false;
+    
+    return true;
+}
+
+function validatePhone(phone) {
+    if (!phone) return false;
+    const phoneRegex = /^[\d\s\(\)\-\+]+$/;
+    if (!phoneRegex.test(phone)) return false;
+    
+    // Remover caracteres não numéricos
+    const digits = phone.replace(/\D/g, '');
+    // Telefone brasileiro: 10 ou 11 dígitos (com DDD)
+    return digits.length >= 10 && digits.length <= 11;
+}
 
 // Armazenamento temporário de tokens (em produção, use Redis ou banco de dados)
 const registrationTokens = new Map();
@@ -77,13 +237,13 @@ if (process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASS) 
     // Verificar conexão
     transporter.verify((error, success) => {
         if (error) {
-            console.error('❌ Erro na configuração do email:', error);
+            safeLogger('error', 'Erro na configuração do email', error);
         } else {
-            console.log('✅ Servidor de email configurado com sucesso!');
+            safeLogger('log', 'Servidor de email configurado com sucesso!');
         }
     });
 } else {
-    console.warn('⚠️  Configuração de email não encontrada. Configure EMAIL_HOST, EMAIL_USER e EMAIL_PASS no .env');
+    safeLogger('warn', 'Configuração de email não encontrada. Configure EMAIL_HOST, EMAIL_USER e EMAIL_PASS no .env');
 }
 
 // Rota de health check
@@ -377,7 +537,7 @@ app.post('/api/register/documents', verifyToken, uploadMultiple.fields([
 });
 
 // Rota para enviar email com anexos (LEGADO - mantida para compatibilidade)
-app.post('/api/email/send', uploadMultiple.fields([
+app.post('/api/email/send', emailRateLimiter, uploadMultiple.fields([
     { name: 'documentFront', maxCount: 1 },
     { name: 'documentBack', maxCount: 1 },
     { name: 'selfie', maxCount: 1 },
@@ -398,9 +558,40 @@ app.post('/api/email/send', uploadMultiple.fields([
             });
         }
 
+        // Verificar honeypot (campo oculto que bots preenchem)
+        if (req.body.honeypot && req.body.honeypot !== '') {
+            return res.status(400).json({ 
+                error: 'Requisição inválida',
+                message: 'Requisição bloqueada por segurança.'
+            });
+        }
+        
         // Extrair dados do formulário
         const formData = JSON.parse(req.body.formData || '{}');
         const accountType = formData.accountType || 'PF';
+        
+        // Validações de dados
+        if (accountType === 'PF') {
+            if (formData.cpf && !validateCPF(formData.cpf)) {
+                return res.status(400).json({ error: 'CPF inválido' });
+            }
+            if (formData.email && !validateEmail(formData.email)) {
+                return res.status(400).json({ error: 'Email inválido' });
+            }
+            if (formData.phone && !validatePhone(formData.phone)) {
+                return res.status(400).json({ error: 'Telefone inválido' });
+            }
+        } else {
+            if (formData.cnpj && !validateCNPJ(formData.cnpj)) {
+                return res.status(400).json({ error: 'CNPJ inválido' });
+            }
+            if (formData.companyEmail && !validateEmail(formData.companyEmail)) {
+                return res.status(400).json({ error: 'Email inválido' });
+            }
+            if (formData.companyPhone && !validatePhone(formData.companyPhone)) {
+                return res.status(400).json({ error: 'Telefone inválido' });
+            }
+        }
         
         // Preparar anexos
         const attachments = [];
@@ -474,10 +665,10 @@ app.post('/api/email/send', uploadMultiple.fields([
         });
 
     } catch (error) {
-        console.error('❌ Erro ao enviar email:', error);
+        safeLogger('error', 'Erro ao enviar email', error);
         res.status(500).json({
             error: 'Erro ao enviar email',
-            message: error.message
+            message: 'Ocorreu um erro ao processar sua solicitação. Tente novamente mais tarde.'
         });
     }
 });
@@ -657,10 +848,10 @@ app.post('/api/tinify/compress', upload.single('image'), async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Erro ao comprimir imagem:', error);
+        safeLogger('error', 'Erro ao comprimir imagem', error);
         res.status(500).json({ 
             error: 'Erro interno do servidor',
-            message: error.message 
+            message: 'Ocorreu um erro ao processar a imagem. Tente novamente mais tarde.'
         });
     }
 });
@@ -671,17 +862,17 @@ module.exports = app;
 // Iniciar servidor apenas se não estiver no Vercel
 if (process.env.VERCEL !== '1' && !process.env.VERCEL_ENV) {
     app.listen(PORT, () => {
-        console.log(`🚀 Servidor Backend rodando na porta ${PORT}`);
-        console.log(`📡 Health check: http://localhost:${PORT}/health`);
-        console.log(`🔧 Tinify: http://localhost:${PORT}/api/tinify/compress`);
-        console.log(`📧 Email: http://localhost:${PORT}/api/email/send`);
+        safeLogger('log', `Servidor Backend rodando na porta ${PORT}`);
+        safeLogger('log', `Health check: http://localhost:${PORT}/health`);
+        safeLogger('log', `Tinify: http://localhost:${PORT}/api/tinify/compress`);
+        safeLogger('log', `Email: http://localhost:${PORT}/api/email/send`);
         
         if (!process.env.TINIFY_API_KEY) {
-            console.warn('⚠️  TINIFY_API_KEY não configurada! Configure no arquivo .env');
+            safeLogger('warn', 'TINIFY_API_KEY não configurada! Configure no arquivo .env');
         }
         
         if (!transporter) {
-            console.warn('⚠️  Servidor de email não configurado! Configure EMAIL_HOST, EMAIL_USER e EMAIL_PASS no .env');
+            safeLogger('warn', 'Servidor de email não configurado! Configure EMAIL_HOST, EMAIL_USER e EMAIL_PASS no .env');
         }
     });
 }

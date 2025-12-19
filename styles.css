@@ -21,8 +21,8 @@
     --color-gray-darker: #1f2937;
     
     /* Typography */
-    --font-serif: 'Playfair Display', serif;
-    --font-sans: 'Inter', sans-serif;
+    --font-serif: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-sans: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
     
     /* Spacing */
     --spacing-xs: 0.5rem;
@@ -109,16 +109,7 @@ body {
 /* Mobile Styles - até 479px */
 @media (max-width: 479px) {
     .tradingview-widget-container {
-        margin: 1.5rem auto 1rem;
-        padding: 0.5rem;
-        border-radius: var(--radius-md);
-        box-shadow: var(--shadow-md);
-    }
-    
-    #tradingview_usdtbrl {
-        height: 400px;
-        min-height: 350px;
-        border-radius: var(--radius-sm);
+        display: none;
     }
 }
 
@@ -347,7 +338,7 @@ body {
 /* Hero Section */
 .hero {
     margin-top: 80px;
-    padding: var(--spacing-2xl) 0 var(--spacing-xl);
+    padding: var(--spacing-2xl) var(--spacing-md) var(--spacing-xl);
     background: linear-gradient(135deg, var(--color-gray-light) 0%, var(--color-white) 50%, var(--color-gray-lighter) 100%);
     text-align: center;
     min-height: 85vh;
@@ -355,7 +346,7 @@ body {
     align-items: center;
     justify-content: center;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .hero::before {
@@ -383,7 +374,7 @@ body {
 }
 
 .hero-title {
-    font-family: var(--font-serif);
+    font-family: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
     font-size: 4.5rem;
     font-weight: 700;
     color: var(--color-navy);
@@ -2452,8 +2443,9 @@ body {
     }
     
     .hero-subtitle {
-        font-size: 0.6rem;
-        max-width: 20%;
+        font-size: 0.875rem;
+        max-width: 100%;
+        padding: 0 var(--spacing-xs);
     }
     
     .section-title {
