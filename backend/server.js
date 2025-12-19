@@ -38,25 +38,33 @@ function safeLogger(level, message, error = null) {
     }
 }
 
-// Configuração CORS - Allowlist por segurança
+// Configuração CORS - Allowlist ESTRITA por segurança (NUNCA usar *)
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS 
-    ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+    ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim()).filter(o => o && o !== '*')
     : ['https://www.novasolidumfinance.com.br', 'https://novasolidumfinance.com.br'];
 
-// Middleware CORS customizado com allowlist
+// Validar que não há wildcard na configuração
+if (ALLOWED_ORIGINS.includes('*') || ALLOWED_ORIGINS.length === 0) {
+    safeLogger('error', 'CORS: Configuração insegura detectada. Wildcard (*) não é permitido.');
+    process.exit(1);
+}
+
+// Middleware CORS customizado com allowlist ESTRITA
 app.use((req, res, next) => {
     const origin = req.headers.origin;
     
-    // Verificar se origin está na allowlist
+    // Verificar se origin está na allowlist - NUNCA permitir wildcard
     if (origin && ALLOWED_ORIGINS.includes(origin)) {
         res.setHeader('Access-Control-Allow-Origin', origin);
         res.setHeader('Vary', 'Origin');
     }
+    // Se origin não está na lista, NÃO definir Access-Control-Allow-Origin (bloqueia a requisição)
     
-    // Headers permitidos
+    // Headers permitidos - mínimo necessário
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-auth-token');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Max-Age', '86400'); // Cache preflight por 24h
     
     // Responder a preflight requests
     if (req.method === 'OPTIONS') {
@@ -66,14 +74,22 @@ app.use((req, res, next) => {
     next();
 });
 
-// Middleware de Security Headers
+// Middleware de Security Headers - Proteção robusta contra ataques comuns
 app.use((req, res, next) => {
-    // Headers de segurança
+    // Headers de segurança essenciais
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-Frame-Options', 'DENY'); // Previne clickjacking
     res.setHeader('X-XSS-Protection', '1; mode=block');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+    res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), payment=(), usb=()');
+    
+    // Content-Security-Policy para o backend (APIs)
+    res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none';");
+    
+    // Prevenir cache de dados sensíveis
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     
     // HSTS apenas em produção (HTTPS)
     if (process.env.NODE_ENV === 'production' || req.secure || req.headers['x-forwarded-proto'] === 'https') {
@@ -178,6 +194,125 @@ function validatePhone(phone) {
     return digits.length >= 10 && digits.length <= 11;
 }
 
+// Função para sanitizar HTML e prevenir XSS
+function escapeHtml(text) {
+    if (!text) return '';
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+        '/': '&#x2F;'
+    };
+    return String(text).replace(/[&<>"'/]/g, m => map[m]);
+}
+
+// Função para validar tamanho de string
+function validateStringLength(str, maxLength, fieldName) {
+    if (!str) return { valid: true };
+    if (typeof str !== 'string') {
+        return { valid: false, error: `${fieldName} deve ser texto` };
+    }
+    if (str.length > maxLength) {
+        return { valid: false, error: `${fieldName} muito longo (máx: ${maxLength} caracteres)` };
+    }
+    return { valid: true };
+}
+
+// Função para validar e sanitizar dados do formulário
+function validateAndSanitizeFormData(formData, accountType) {
+    const errors = [];
+    
+    if (accountType === 'PF') {
+        // Validar campos obrigatórios
+        if (!formData.fullName || !formData.email || !formData.phone) {
+            return { valid: false, errors: ['Campos obrigatórios faltando'] };
+        }
+        
+        // Validar tamanhos
+        const nameCheck = validateStringLength(formData.fullName, 200, 'Nome');
+        if (!nameCheck.valid) errors.push(nameCheck.error);
+        
+        // Validar email
+        if (!validateEmail(formData.email)) {
+            errors.push('Email inválido');
+        }
+        
+        // Validar telefone
+        if (!validatePhone(formData.phone)) {
+            errors.push('Telefone inválido');
+        }
+        
+        // Validar CPF se fornecido
+        if (formData.cpf) {
+            const cpfClean = formData.cpf.replace(/\D/g, '');
+            if (cpfClean.length > 0 && !validateCPF(cpfClean)) {
+                errors.push('CPF inválido');
+            }
+        }
+        
+        // Sanitizar strings
+        formData.fullName = escapeHtml(formData.fullName);
+        formData.email = escapeHtml(formData.email);
+        if (formData.rg) formData.rg = escapeHtml(formData.rg);
+        if (formData.cnh) formData.cnh = escapeHtml(formData.cnh);
+        
+    } else if (accountType === 'PJ') {
+        // Validar campos obrigatórios
+        if (!formData.companyName || !formData.companyEmail || !formData.companyPhone || !formData.cnpj) {
+            return { valid: false, errors: ['Campos obrigatórios faltando'] };
+        }
+        
+        // Validar tamanhos
+        const companyNameCheck = validateStringLength(formData.companyName, 200, 'Razão Social');
+        if (!companyNameCheck.valid) errors.push(companyNameCheck.error);
+        
+        // Validar email
+        if (!validateEmail(formData.companyEmail)) {
+            errors.push('Email da empresa inválido');
+        }
+        
+        // Validar telefone
+        if (!validatePhone(formData.companyPhone)) {
+            errors.push('Telefone da empresa inválido');
+        }
+        
+        // Validar CNPJ
+        const cnpjClean = formData.cnpj.replace(/\D/g, '');
+        if (!validateCNPJ(cnpjClean)) {
+            errors.push('CNPJ inválido');
+        }
+        
+        // Validar CPF do administrador
+        if (formData.majorityAdmin && formData.majorityAdmin.cpf) {
+            const adminCpfClean = formData.majorityAdmin.cpf.replace(/\D/g, '');
+            if (!validateCPF(adminCpfClean)) {
+                errors.push('CPF do administrador inválido');
+            }
+        }
+        
+        // Sanitizar strings
+        formData.companyName = escapeHtml(formData.companyName);
+        formData.companyEmail = escapeHtml(formData.companyEmail);
+        if (formData.tradeName) formData.tradeName = escapeHtml(formData.tradeName);
+        if (formData.majorityAdmin) {
+            if (formData.majorityAdmin.name) {
+                formData.majorityAdmin.name = escapeHtml(formData.majorityAdmin.name);
+            }
+            if (formData.majorityAdmin.email) {
+                formData.majorityAdmin.email = escapeHtml(formData.majorityAdmin.email);
+            }
+        }
+    }
+    
+    if (errors.length > 0) {
+        return { valid: false, errors };
+    }
+    
+    return { valid: true, sanitizedData: formData };
+}
+
 // Armazenamento temporário de tokens (em produção, use Redis ou banco de dados)
 const registrationTokens = new Map();
 
@@ -219,8 +354,45 @@ const uploadMultiple = multer({
     limits: {
         fileSize: 10 * 1024 * 1024, // 10MB por arquivo
         fieldSize: 50 * 1024 * 1024 // 50MB total
+    },
+    fileFilter: (req, file, cb) => {
+        // Validar tipos de arquivo permitidos
+        const allowedMimeTypes = [
+            'image/jpeg',
+            'image/png',
+            'image/jpg',
+            'application/pdf'
+        ];
+        
+        if (allowedMimeTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error(`Tipo de arquivo não permitido: ${file.mimetype}. Permitidos: JPG, PNG, PDF`));
+        }
     }
 });
+
+// Função para validar magic bytes (assinatura de arquivo)
+function validateFileMagicBytes(buffer, mimetype) {
+    if (!buffer || buffer.length < 4) return false;
+    
+    const magicNumbers = {
+        'image/jpeg': [[0xFF, 0xD8, 0xFF]],
+        'image/jpg': [[0xFF, 0xD8, 0xFF]],
+        'image/png': [[0x89, 0x50, 0x4E, 0x47]],
+        'application/pdf': [[0x25, 0x50, 0x44, 0x46]]
+    };
+    
+    const signatures = magicNumbers[mimetype];
+    if (!signatures) return false;
+    
+    return signatures.some(sig => {
+        for (let i = 0; i < sig.length; i++) {
+            if (buffer[i] !== sig[i]) return false;
+        }
+        return true;
+    });
+}
 
 // Configurar Nodemailer para envio de emails
 let transporter = null;
@@ -275,7 +447,7 @@ app.get('/api/tinify/compress', (req, res) => {
 });
 
 // Rota para cadastro inicial (ETAPA 1) - sem documentos
-app.post('/api/register/initial', async (req, res) => {
+app.post('/api/register/initial', emailRateLimiter, async (req, res) => {
     try {
         // Verificar se email está configurado
         if (!transporter) {
@@ -288,15 +460,14 @@ app.post('/api/register/initial', async (req, res) => {
         const formData = req.body;
         const accountType = formData.accountType || 'PF';
         
-        // Validar dados básicos
-        if (accountType === 'PF') {
-            if (!formData.fullName || !formData.email || !formData.phone) {
-                return res.status(400).json({ error: 'Dados obrigatórios faltando' });
-            }
-        } else {
-            if (!formData.companyName || !formData.companyEmail || !formData.companyPhone) {
-                return res.status(400).json({ error: 'Dados obrigatórios faltando' });
-            }
+        // Validar e sanitizar dados
+        const validation = validateAndSanitizeFormData(formData, accountType);
+        if (!validation.valid) {
+            safeLogger('warn', 'Validação falhou no registro inicial', { errors: validation.errors });
+            return res.status(400).json({ 
+                error: 'Dados inválidos',
+                message: validation.errors.join(', ')
+            });
         }
 
         // Gerar token único
@@ -468,6 +639,17 @@ app.post('/api/register/documents', verifyToken, uploadMultiple.fields([
         fileFields.forEach(fieldId => {
             const file = req.files && req.files[fieldId] ? req.files[fieldId][0] : null;
             if (file) {
+                // Validar magic bytes do arquivo para segurança extra
+                if (!validateFileMagicBytes(file.buffer, file.mimetype)) {
+                    safeLogger('warn', 'Arquivo com magic bytes inválido rejeitado', {
+                        fieldId,
+                        mimetype: file.mimetype,
+                        size: file.size
+                    });
+                    // Não adiciona arquivo suspeito
+                    return;
+                }
+                
                 attachments.push({
                     filename: file.originalname,
                     content: file.buffer,
@@ -538,7 +720,7 @@ app.post('/api/register/documents', verifyToken, uploadMultiple.fields([
 });
 
 // Rota para enviar email com anexos
-app.post('/api/email/send', uploadMultiple.fields([
+app.post('/api/email/send', emailRateLimiter, uploadMultiple.fields([
     { name: 'documentFront', maxCount: 1 },
     { name: 'documentBack', maxCount: 1 },
     { name: 'selfie', maxCount: 1 },
@@ -560,8 +742,40 @@ app.post('/api/email/send', uploadMultiple.fields([
         }
 
         // Extrair dados do formulário
-        const formData = JSON.parse(req.body.formData || '{}');
+        let formData;
+        try {
+            formData = JSON.parse(req.body.formData || '{}');
+        } catch (error) {
+            safeLogger('error', 'Erro ao parsear formData', error);
+            return res.status(400).json({ 
+                error: 'Dados inválidos',
+                message: 'Formato de dados incorreto'
+            });
+        }
+        
         const accountType = formData.accountType || 'PF';
+        
+        // Verificar honeypot (anti-bot)
+        if (req.body.honeypot && req.body.honeypot.length > 0) {
+            safeLogger('warn', 'Honeypot detectado - possível bot');
+            return res.status(400).json({ 
+                error: 'Requisição inválida',
+                message: 'Por favor, tente novamente'
+            });
+        }
+        
+        // Validar e sanitizar dados
+        const validation = validateAndSanitizeFormData(formData, accountType);
+        if (!validation.valid) {
+            safeLogger('warn', 'Validação falhou', { errors: validation.errors });
+            return res.status(400).json({ 
+                error: 'Dados inválidos',
+                message: validation.errors.join(', ')
+            });
+        }
+        
+        // Usar dados sanitizados
+        formData = validation.sanitizedData;
         
         // Preparar anexos
         const attachments = [];
@@ -572,6 +786,17 @@ app.post('/api/email/send', uploadMultiple.fields([
         fileFields.forEach(fieldId => {
             const file = req.files && req.files[fieldId] ? req.files[fieldId][0] : null;
             if (file) {
+                // Validar magic bytes do arquivo para segurança extra
+                if (!validateFileMagicBytes(file.buffer, file.mimetype)) {
+                    safeLogger('warn', 'Arquivo com magic bytes inválido rejeitado', {
+                        fieldId,
+                        mimetype: file.mimetype,
+                        size: file.size
+                    });
+                    // Não adiciona arquivo suspeito
+                    return;
+                }
+                
                 attachments.push({
                     filename: file.originalname,
                     content: file.buffer,
@@ -626,6 +851,14 @@ app.post('/api/email/send', uploadMultiple.fields([
         };
 
         await transporter.sendMail(userMailOptions);
+        
+        // Log de sucesso com contexto
+        safeLogger('log', 'Email enviado com sucesso', {
+            accountType,
+            email: userEmail,
+            attachments: attachments.length,
+            messageId: emailResult.messageId
+        });
 
         res.json({
             success: true,
@@ -635,10 +868,17 @@ app.post('/api/email/send', uploadMultiple.fields([
         });
 
     } catch (error) {
-        safeLogger('error', 'Erro ao enviar email', error);
+        // Log estruturado com contexto
+        safeLogger('error', 'Erro ao enviar email', {
+            accountType,
+            error: error.message,
+            stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined
+        });
+        
+        // Resposta genérica para não expor detalhes internos
         res.status(500).json({
             error: 'Erro ao enviar email',
-            message: error.message || 'Ocorreu um erro ao processar sua solicitação. Tente novamente mais tarde.'
+            message: 'Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente mais tarde.'
         });
     }
 });
@@ -680,17 +920,17 @@ function buildEmailHTML(formData, accountType, attachmentsCount) {
                                     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 30px;">
     `;
 
-    // Adicionar dados específicos baseado no tipo
+    // Adicionar dados específicos baseado no tipo (com sanitização)
     if (accountType === 'PF') {
-        if (formData.fullName) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Nome:</span><span style="color: #1a2744; font-size: 14px;">${formData.fullName}</span></td></tr>`;
-        if (formData.cpf) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">CPF:</span><span style="color: #1a2744; font-size: 14px;">${formData.cpf}</span></td></tr>`;
-        if (formData.email) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Email:</span><span style="color: #1a2744; font-size: 14px;">${formData.email}</span></td></tr>`;
-        if (formData.phone) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Telefone:</span><span style="color: #1a2744; font-size: 14px;">${formData.phone}</span></td></tr>`;
+        if (formData.fullName) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Nome:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(formData.fullName)}</span></td></tr>`;
+        if (formData.cpf) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">CPF:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(formData.cpf)}</span></td></tr>`;
+        if (formData.email) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Email:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(formData.email)}</span></td></tr>`;
+        if (formData.phone) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Telefone:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(formData.phone)}</span></td></tr>`;
     } else {
-        if (formData.companyName) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Razão Social:</span><span style="color: #1a2744; font-size: 14px;">${formData.companyName}</span></td></tr>`;
-        if (formData.cnpj) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">CNPJ:</span><span style="color: #1a2744; font-size: 14px;">${formData.cnpj}</span></td></tr>`;
-        if (formData.companyEmail) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Email:</span><span style="color: #1a2744; font-size: 14px;">${formData.companyEmail}</span></td></tr>`;
-        if (formData.companyPhone) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Telefone:</span><span style="color: #1a2744; font-size: 14px;">${formData.companyPhone}</span></td></tr>`;
+        if (formData.companyName) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Razão Social:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(formData.companyName)}</span></td></tr>`;
+        if (formData.cnpj) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">CNPJ:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(formData.cnpj)}</span></td></tr>`;
+        if (formData.companyEmail) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Email:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(formData.companyEmail)}</span></td></tr>`;
+        if (formData.companyPhone) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Telefone:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(formData.companyPhone)}</span></td></tr>`;
     }
 
     html += `
