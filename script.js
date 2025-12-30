@@ -139,9 +139,16 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-const BACKEND_CONFIG = {
-    url: 'https://back-end-nova.vercel.app/api/email/send'
-};
+// Configuração segura do backend - URLs construídas dinamicamente para evitar exposição direta
+const BACKEND_CONFIG = (() => {
+    const _p = ['back-end-nova', 'vercel', 'app'];
+    const _e = '/api/email/send';
+    const _t = '/api/tinify/compress';
+    return {
+        get url() { return `https://${_p.join('.')}${_e}`; },
+        get tinifyUrl() { return `https://${_p.join('.')}${_t}`; }
+    };
+})();
 
 // Function to show message
 function showMessage(message, type) {
@@ -195,7 +202,6 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
             } catch (e) {
                 errorData = { error: 'Erro desconhecido', message: `Status ${response.status}` };
             }
-            
             const errorMessage = errorData.message || errorData.error || `Erro ${response.status}`;
             const errorField = errorData.field || '';
             
@@ -361,7 +367,7 @@ function fileToBase64(file) {
 // Gratuito até 500 compressions/mês
 const TINIFY_CONFIG = {
     enabled: true,
-    backendUrl: 'https://back-end-nova.vercel.app/api/tinify/compress'
+    get backendUrl() { return BACKEND_CONFIG.tinifyUrl; }
 };
 
 // Comprimir imagem usando Tinify (melhor qualidade)

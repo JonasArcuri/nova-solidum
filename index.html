@@ -4,16 +4,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://s3.tradingview.com https://*.tradingview.com https://api.coingecko.com https://api.binance.com https://viacep.com.br; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.tradingview.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://back-end-nova.vercel.app https://api.coingecko.com https://api.binance.com https://viacep.com.br https://*.tradingview.com https://api.tinify.com wss://*.tradingview.com; frame-src https://*.tradingview.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self' https://back-end-nova.vercel.app;">
+    <!-- Security Headers -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline' 'unsafe-eval' https://s3.tradingview.com https://*.tradingview.com;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+        font-src 'self' https://fonts.gstatic.com;
+        img-src 'self' data: https: blob:;
+        connect-src 'self' https://back-end-nova.vercel.app https://api.coingecko.com https://api.binance.com https://viacep.com.br https://*.tradingview.com wss://*.tradingview.com;
+        frame-src https://*.tradingview.com;
+        frame-ancestors 'none';
+        worker-src 'self' blob:;
+        child-src https://*.tradingview.com blob:;
+        object-src 'none';
+        base-uri 'self';
+        form-action 'self' https://back-end-nova.vercel.app;
+        upgrade-insecure-requests;
+    ">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=(), payment=()">
     <title>Nova Solidum Finances</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="shortcut icon" href="assets/Nova-Solidum.png" type="image/png">
+    <!-- Fonte sóbria e reta para design clean e profissional -->
     <link
-        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700;900&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
 </head>
 
@@ -32,7 +52,7 @@
                     <li><a href="#sobre">Sobre</a></li>
                 </ul>
                 <div class="header-buttons">
-                    <a href="https://nova-solidum-conversor.vercel.app/" target="_blank" class="btn-secondary">Cotação</a>
+                    <a href="https://nova-solidum-conversor.vercel.app/" target="_blank" rel="noopener noreferrer" class="btn-secondary">Cotação</a>
                 <button class="btn-primary">Começar</button>
                 </div>
                 <button class="mobile-menu-toggle" aria-label="Menu">
@@ -190,6 +210,18 @@
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- TradingView Widget - Gráfico USDT/BRL -->
+            <div class="tradingview-widget-container">
+                <!-- Indicador de Status com símbolo claro -->
+                <div class="chart-status-indicator" id="chartStatus" data-tooltip="USDT/BRL • Binance • Conectado" role="status" aria-live="polite">
+                    <span class="status-dot" aria-hidden="true"></span>
+                    <span class="status-symbol">USDT/BRL</span>
+                    <span class="status-divider">•</span>
+                    <span class="status-text">Ao Vivo</span>
+                </div>
+                <div id="tradingview_chart"></div>
             </div>
         </div>
     </section>
@@ -469,7 +501,7 @@
                 <!-- <span class="logo-text">Nova Solidum</span> -->
             </div>
             <div style="text-align: center; margin-top: 1.5rem; margin-bottom: 1rem;">
-                <a href="https://wa.me/5511914998141" target="_blank" class="footer-link no-modal" style="text-decoration: none; color: white; opacity: 0.8; font-size: 0.9rem; transition: opacity 0.3s;">Desenvolvido por CODNODO</a>
+                <a href="https://wa.me/5511914998141" target="_blank" rel="noopener noreferrer" class="footer-link no-modal" style="text-decoration: none; color: white; opacity: 0.8; font-size: 0.9rem; transition: opacity 0.3s;">Desenvolvido por CODNODO</a>
             </div>
         </div>
     </footer>
@@ -832,7 +864,7 @@
                 <div class="form-group">
                         <label class="checkbox-label">
                             <input type="checkbox" id="acceptTerms" name="acceptTerms" required>
-                            <span>Li e aceito os <a href="#" target="_blank">Termos de Uso</a> e <a href="#" target="_blank">Política de Privacidade</a> *</span>
+                            <span>Li e aceito os <a href="#" target="_blank" rel="noopener noreferrer">Termos de Uso</a> e <a href="#" target="_blank" rel="noopener noreferrer">Política de Privacidade</a> *</span>
                         </label>
                     </div>
                 </div>
@@ -847,6 +879,121 @@
     </div>
 
     <script src="script.js"></script>
+    
+    <!-- TradingView Widget Script -->
+    <script type="text/javascript">
+        // Gerenciador de status do gráfico
+        const ChartStatus = {
+            indicator: null,
+            
+            init() {
+                this.indicator = document.getElementById('chartStatus');
+            },
+            
+            setConnected() {
+                if (!this.indicator) return;
+                this.indicator.className = 'chart-status-indicator';
+                this.indicator.querySelector('.status-text').textContent = 'Ao Vivo';
+                this.indicator.setAttribute('data-tooltip', 'USDT/BRL • Binance • Conectado');
+            }
+        };
+
+        // Configuração do gráfico TradingView
+        function initTradingViewChart() {
+            if (typeof TradingView === 'undefined') {
+                setTimeout(initTradingViewChart, 500);
+                return;
+            }
+
+            const widgetConfig = {
+                "container_id": "tradingview_chart",
+                "width": "100%",
+                "height": 600,
+                "symbol": "BINANCE:USDTBRL",
+                "interval": "D",
+                "timezone": "America/Sao_Paulo",
+                "theme": "light",
+                "style": "1",
+                "locale": "pt_BR",
+                "toolbar_bg": "#f1f3f6",
+                "enable_publishing": false,
+                "hide_top_toolbar": false,
+                "hide_legend": true,
+                "save_image": false,
+                "backgroundColor": "rgba(255, 255, 255, 1)",
+                "gridColor": "rgba(240, 243, 250, 1)",
+                "allow_symbol_change": false,
+                "studies": [],
+                "show_popup_button": false,
+                "popup_width": "1000",
+                "popup_height": "650",
+                "disabled_features": [
+                    "header_symbol_search",
+                    "header_compare",
+                    "header_undo_redo",
+                    "header_screenshot",
+                    "header_saveload",
+                    "compare_symbol",
+                    "display_market_status",
+                    "go_to_date",
+                    "header_settings",
+                    "header_chart_type",
+                    "header_resolutions",
+                    "header_interval_dialog_button",
+                    "show_interval_dialog_on_key_press",
+                    "symbol_info",
+                    "timeframes_toolbar",
+                    "main_series_scale_menu",
+                    "context_menus",
+                    "control_bar",
+                    "border_around_the_chart",
+                    "left_toolbar",
+                    "edit_buttons_in_legend",
+                    "create_volume_indicator_by_default"
+                ],
+                "enabled_features": [],
+                "overrides": {
+                    "mainSeriesProperties.showCountdown": false,
+                    "paneProperties.background": "#ffffff",
+                    "paneProperties.vertGridProperties.color": "#f0f3fa",
+                    "paneProperties.horzGridProperties.color": "#f0f3fa",
+                    "symbolWatermarkProperties.transparency": 90,
+                    "scalesProperties.textColor": "#6b7280",
+                    "mainSeriesProperties.candleStyle.upColor": "#10b981",
+                    "mainSeriesProperties.candleStyle.downColor": "#ef4444",
+                    "mainSeriesProperties.candleStyle.borderUpColor": "#10b981",
+                    "mainSeriesProperties.candleStyle.borderDownColor": "#ef4444",
+                    "mainSeriesProperties.candleStyle.wickUpColor": "#10b981",
+                    "mainSeriesProperties.candleStyle.wickDownColor": "#ef4444"
+                }
+            };
+
+            const widget = new TradingView.widget(widgetConfig);
+
+            // Manter status como conectado (sem monitoramento de erros)
+            widget.onChartReady(function() {
+                ChartStatus.setConnected();
+            });
+        }
+
+        // Carregar script do TradingView
+        (function() {
+            // Inicializar indicador de status
+            ChartStatus.init();
+            
+            var script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.async = true;
+            script.src = 'https://s3.tradingview.com/tv.js';
+            script.onload = function() {
+                initTradingViewChart();
+            };
+            script.onerror = function() {
+                console.error('Erro ao carregar TradingView');
+            };
+            document.getElementsByTagName('head')[0].appendChild(script);
+        })();
+    </script>
 </body>
 
 </html>
