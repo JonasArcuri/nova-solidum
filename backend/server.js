@@ -190,8 +190,11 @@ function validatePhone(phone) {
     
     // Remover caracteres não numéricos
     const digits = phone.replace(/\D/g, '');
-    // Telefone brasileiro: 10 ou 11 dígitos (com DDD)
-    return digits.length >= 10 && digits.length <= 11;
+    // Telefone brasileiro: 
+    // - Com código do país (+55): 12 ou 13 dígitos (55 + DDD + número)
+    // - Sem código do país: 10 ou 11 dígitos (DDD + número)
+    // Aceitar de 10 a 13 dígitos para cobrir ambos os casos
+    return digits.length >= 10 && digits.length <= 13;
 }
 
 // Função para sanitizar HTML e prevenir XSS
@@ -225,8 +228,10 @@ function validateAndSanitizeFormData(formData, accountType) {
     const errors = [];
     
     if (accountType === 'PF') {
-        // Validar campos obrigatórios
-        if (!formData.fullName || !formData.email || !formData.phone) {
+        // Validar campos obrigatórios (verificar se existem e não são strings vazias)
+        if (!formData.fullName || formData.fullName.trim() === '' || 
+            !formData.email || formData.email.trim() === '' || 
+            !formData.phone || formData.phone.trim() === '') {
             return { valid: false, errors: ['Campos obrigatórios faltando'] };
         }
         
@@ -259,8 +264,11 @@ function validateAndSanitizeFormData(formData, accountType) {
         if (formData.cnh) formData.cnh = escapeHtml(formData.cnh);
         
     } else if (accountType === 'PJ') {
-        // Validar campos obrigatórios
-        if (!formData.companyName || !formData.companyEmail || !formData.companyPhone || !formData.cnpj) {
+        // Validar campos obrigatórios (verificar se existem e não são strings vazias)
+        if (!formData.companyName || formData.companyName.trim() === '' || 
+            !formData.companyEmail || formData.companyEmail.trim() === '' || 
+            !formData.companyPhone || formData.companyPhone.trim() === '' || 
+            !formData.cnpj || formData.cnpj.trim() === '') {
             return { valid: false, errors: ['Campos obrigatórios faltando'] };
         }
         
@@ -931,6 +939,77 @@ function buildEmailHTML(formData, accountType, attachmentsCount) {
         if (formData.cnpj) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">CNPJ:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(formData.cnpj)}</span></td></tr>`;
         if (formData.companyEmail) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Email:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(formData.companyEmail)}</span></td></tr>`;
         if (formData.companyPhone) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Telefone:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(formData.companyPhone)}</span></td></tr>`;
+    }
+
+    html += `
+                                    </table>
+                                    
+                                    <h2 style="margin: 40px 0 20px 0; color: #1a2744; font-size: 18px; font-weight: 600; border-bottom: 2px solid #dc2626; padding-bottom: 10px;">Endereço</h2>
+                                    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 30px;">
+    `;
+
+    // Adicionar endereço baseado no tipo
+    // Suportar tanto campos diretos quanto dentro do objeto 'address'
+    const address = formData.address || {};
+    
+    if (accountType === 'PF') {
+        // Verificar se é estrangeiro ou brasileiro
+        const isForeigner = formData.isForeigner === true || formData.isForeigner === 'true' || address.isForeign === true;
+        
+        if (isForeigner) {
+            // Endereço para estrangeiros (campos diretos ou dentro de address)
+            const street = formData.foreignStreet || address.street || '';
+            const number = formData.foreignNumber || address.number || '';
+            const complement = formData.foreignComplement || address.complement || '';
+            const district = formData.foreignDistrict || address.district || '';
+            const city = formData.foreignCity || address.city || '';
+            const state = formData.foreignState || address.state || '';
+            const zipCode = formData.foreignZipCode || address.zipCode || '';
+            const country = formData.foreignCountry || address.country || '';
+            
+            if (street) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Logradouro:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(street)}</span></td></tr>`;
+            if (number) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Número:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(number)}</span></td></tr>`;
+            if (complement) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Complemento:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(complement)}</span></td></tr>`;
+            if (district) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Bairro/Distrito:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(district)}</span></td></tr>`;
+            if (city) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Cidade:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(city)}</span></td></tr>`;
+            if (state) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Estado/Província:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(state)}</span></td></tr>`;
+            if (zipCode) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">CEP/Código Postal:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(zipCode)}</span></td></tr>`;
+            if (country) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">País:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(country)}</span></td></tr>`;
+        } else {
+            // Endereço para brasileiros (campos diretos ou dentro de address)
+            const cep = formData.cep || address.cep || '';
+            const street = formData.street || address.street || '';
+            const number = formData.number || address.number || '';
+            const complement = formData.complement || address.complement || '';
+            const district = formData.district || address.district || '';
+            const city = formData.city || address.city || '';
+            const state = formData.state || address.state || '';
+            
+            if (cep) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">CEP:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(cep)}</span></td></tr>`;
+            if (street) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Logradouro:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(street)}</span></td></tr>`;
+            if (number) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Número:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(number)}</span></td></tr>`;
+            if (complement) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Complemento:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(complement)}</span></td></tr>`;
+            if (district) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Bairro:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(district)}</span></td></tr>`;
+            if (city) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Cidade:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(city)}</span></td></tr>`;
+            if (state) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">UF:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(state)}</span></td></tr>`;
+        }
+    } else {
+        // Endereço para PJ (campos diretos ou dentro de address)
+        const cep = formData.pjCep || address.cep || '';
+        const street = formData.pjStreet || address.street || '';
+        const number = formData.pjNumber || address.number || '';
+        const complement = formData.pjComplement || address.complement || '';
+        const district = formData.pjDistrict || address.district || '';
+        const city = formData.pjCity || address.city || '';
+        const state = formData.pjState || address.state || '';
+        
+        if (cep) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">CEP:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(cep)}</span></td></tr>`;
+        if (street) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Logradouro:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(street)}</span></td></tr>`;
+        if (number) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Número:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(number)}</span></td></tr>`;
+        if (complement) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Complemento:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(complement)}</span></td></tr>`;
+        if (district) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Bairro:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(district)}</span></td></tr>`;
+        if (city) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Cidade:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(city)}</span></td></tr>`;
+        if (state) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">UF:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(state)}</span></td></tr>`;
     }
 
     html += `
