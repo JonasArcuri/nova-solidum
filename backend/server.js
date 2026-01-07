@@ -257,6 +257,44 @@ function validateAndSanitizeFormData(formData, accountType) {
             }
         }
         
+        // Validar endereço PF
+        const address = formData.address || {};
+        const isForeigner = formData.isForeigner === true || formData.isForeigner === 'true' || address.isForeign === true;
+        
+        if (isForeigner) {
+            // Validar endereço estrangeiro
+            const foreignZipCode = formData.foreignZipCode || address.zipCode || '';
+            const foreignStreet = formData.foreignStreet || address.street || '';
+            const foreignNumber = formData.foreignNumber || address.number || '';
+            const foreignCity = formData.foreignCity || address.city || '';
+            const foreignState = formData.foreignState || address.state || '';
+            
+            if (!foreignZipCode || foreignZipCode.trim() === '' ||
+                !foreignStreet || foreignStreet.trim() === '' ||
+                !foreignNumber || foreignNumber.trim() === '' ||
+                !foreignCity || foreignCity.trim() === '' ||
+                !foreignState || foreignState.trim() === '') {
+                errors.push('Por favor, preencha todos os campos obrigatórios do endereço (CEP/Código Postal, Logradouro, Número, Cidade e Estado/Província)');
+            }
+        } else {
+            // Validar endereço brasileiro
+            const cep = formData.cep || address.cep || '';
+            const street = formData.street || address.street || '';
+            const number = formData.number || address.number || '';
+            const district = formData.district || address.district || '';
+            const city = formData.city || address.city || '';
+            const state = formData.state || address.state || '';
+            
+            if (!cep || cep.trim() === '' ||
+                !street || street.trim() === '' ||
+                !number || number.trim() === '' ||
+                !district || district.trim() === '' ||
+                !city || city.trim() === '' ||
+                !state || state.trim() === '') {
+                errors.push('Por favor, preencha todos os campos obrigatórios do endereço (CEP, Logradouro, Número, Bairro, Cidade e UF)');
+            }
+        }
+        
         // Sanitizar strings
         formData.fullName = escapeHtml(formData.fullName);
         formData.email = escapeHtml(formData.email);
@@ -298,6 +336,24 @@ function validateAndSanitizeFormData(formData, accountType) {
             if (!validateCPF(adminCpfClean)) {
                 errors.push('CPF do administrador inválido');
             }
+        }
+        
+        // Validar endereço PJ
+        const address = formData.address || {};
+        const pjCep = formData.pjCep || address.cep || '';
+        const pjStreet = formData.pjStreet || address.street || '';
+        const pjNumber = formData.pjNumber || address.number || '';
+        const pjDistrict = formData.pjDistrict || address.district || '';
+        const pjCity = formData.pjCity || address.city || '';
+        const pjState = formData.pjState || address.state || '';
+        
+        if (!pjCep || pjCep.trim() === '' ||
+            !pjStreet || pjStreet.trim() === '' ||
+            !pjNumber || pjNumber.trim() === '' ||
+            !pjDistrict || pjDistrict.trim() === '' ||
+            !pjCity || pjCity.trim() === '' ||
+            !pjState || pjState.trim() === '') {
+            errors.push('Por favor, preencha todos os campos obrigatórios do endereço (CEP, Logradouro, Número, Bairro, Cidade e UF)');
         }
         
         // Sanitizar strings

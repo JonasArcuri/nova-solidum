@@ -684,13 +684,19 @@ const pjForm = document.getElementById('pjForm');
 function updateRequiredFields() {
     const selectedType = document.querySelector('input[name="accountType"]:checked')?.value || 'PF';
     
-    // Lista de IDs de campos de endereço que NÃO devem ser obrigatórios
-    const addressFieldIds = [
-        'cep', 'street', 'number', 'complement', 'district', 'city', 'state',
-        'foreignStreet', 'foreignNumber', 'foreignComplement', 'foreignDistrict', 
-        'foreignCity', 'foreignState', 'foreignZipCode', 'foreignCountry',
-        'pjCep', 'pjStreet', 'pjNumber', 'pjComplement', 'pjDistrict', 'pjCity', 'pjState'
+    // Lista de IDs de campos de endereço OPCIONAIS (complemento)
+    const optionalAddressFields = [
+        'complement', 'foreignComplement', 'foreignDistrict', 'foreignCountry',
+        'pjComplement'
     ];
+    
+    // Lista de IDs de campos de endereço OBRIGATÓRIOS
+    const requiredAddressFieldsPF = {
+        brazil: ['cep', 'street', 'number', 'district', 'city', 'state'],
+        foreign: ['foreignStreet', 'foreignNumber', 'foreignCity', 'foreignState', 'foreignZipCode']
+    };
+    
+    const requiredAddressFieldsPJ = ['pjCep', 'pjStreet', 'pjNumber', 'pjDistrict', 'pjCity', 'pjState'];
     
     if (selectedType === 'PF') {
         pfForm.style.display = 'block';
@@ -699,17 +705,19 @@ function updateRequiredFields() {
         pjForm.querySelectorAll('[required]').forEach(field => {
             field.removeAttribute('required');
         });
-        // Garantir que campos PF tenham required (se necessário), exceto endereço
+        // Garantir que campos PF tenham required (se necessário)
         pfForm.querySelectorAll('input[data-pf-required], textarea[data-pf-required], select[data-pf-required]').forEach(field => {
-            if (!addressFieldIds.includes(field.id)) {
+            if (!optionalAddressFields.includes(field.id)) {
                 field.setAttribute('required', 'required');
             }
         });
-        // Garantir que campos de endereço não sejam obrigatórios
-        addressFieldIds.forEach(fieldId => {
+        // Garantir que campos de endereço obrigatórios tenham required
+        const isForeigner = document.getElementById('isForeigner')?.checked || false;
+        const requiredFields = isForeigner ? requiredAddressFieldsPF.foreign : requiredAddressFieldsPF.brazil;
+        requiredFields.forEach(fieldId => {
             const field = document.getElementById(fieldId);
             if (field) {
-                field.removeAttribute('required');
+                field.setAttribute('required', 'required');
             }
         });
     } else {
@@ -719,17 +727,17 @@ function updateRequiredFields() {
         pfForm.querySelectorAll('[required]').forEach(field => {
             field.removeAttribute('required');
         });
-        // Garantir que campos PJ tenham required (se necessário), exceto endereço
+        // Garantir que campos PJ tenham required (se necessário)
         pjForm.querySelectorAll('input[data-pj-required], textarea[data-pj-required], select[data-pj-required]').forEach(field => {
-            if (!addressFieldIds.includes(field.id)) {
+            if (!optionalAddressFields.includes(field.id)) {
                 field.setAttribute('required', 'required');
             }
         });
-        // Garantir que campos de endereço não sejam obrigatórios
-        addressFieldIds.forEach(fieldId => {
+        // Garantir que campos de endereço PJ obrigatórios tenham required
+        requiredAddressFieldsPJ.forEach(fieldId => {
             const field = document.getElementById(fieldId);
             if (field) {
-                field.removeAttribute('required');
+                field.setAttribute('required', 'required');
             }
         });
     }
@@ -920,14 +928,14 @@ if (isForeignerCheckbox) {
             if (cpfHint) cpfHint.textContent = 'Obrigatório';
         }
         
-        // Atualizar campos de endereço (todos opcionais agora)
+        // Atualizar campos de endereço (CEP e endereço são obrigatórios)
         if (addressBrazil && addressForeign) {
             if (isForeigner) {
                 // Mostrar endereço estrangeiro, ocultar brasileiro
                 addressBrazil.style.display = 'none';
                 addressForeign.style.display = 'block';
                 
-                // Remover required dos campos brasileiros (já não são obrigatórios, mas garantindo)
+                // Remover required dos campos brasileiros e limpar valores
                 Object.values(brazilAddressFields).forEach(field => {
                     if (field.input) {
                         field.input.removeAttribute('required');
@@ -936,10 +944,12 @@ if (isForeignerCheckbox) {
                     if (field.label) field.label.style.display = 'none';
                 });
                 
-                // Garantir que campos estrangeiros não sejam obrigatórios
-                Object.values(foreignAddressFields).forEach(field => {
+                // Garantir que campos estrangeiros obrigatórios tenham required
+                const requiredForeignFields = ['foreignStreet', 'foreignNumber', 'foreignCity', 'foreignState', 'foreignZipCode'];
+                requiredForeignFields.forEach(fieldId => {
+                    const field = document.getElementById(fieldId);
                     if (field) {
-                        field.removeAttribute('required');
+                        field.setAttribute('required', 'required');
                     }
                 });
             } else {
@@ -947,12 +957,13 @@ if (isForeignerCheckbox) {
                 addressBrazil.style.display = 'block';
                 addressForeign.style.display = 'none';
                 
-                // Garantir que campos brasileiros não sejam obrigatórios
-                Object.values(brazilAddressFields).forEach(field => {
-                    if (field.input) {
-                        field.input.removeAttribute('required');
+                // Garantir que campos brasileiros obrigatórios tenham required
+                const requiredBrazilFields = ['cep', 'street', 'number', 'district', 'city', 'state'];
+                requiredBrazilFields.forEach(fieldId => {
+                    const field = document.getElementById(fieldId);
+                    if (field) {
+                        field.setAttribute('required', 'required');
                     }
-                    if (field.label) field.label.style.display = 'none';
                 });
                 
                 // Remover required dos campos estrangeiros e limpar
@@ -1081,6 +1092,49 @@ if (registerForm) {
             if (!validateCPF(adminCpf)) {
                 showMessage('CPF do administrador inválido. Por favor, verifique o número.', 'error');
                 return;
+            }
+            
+            // Validar endereço PJ
+            const pjCep = document.getElementById('pjCep')?.value.trim() || '';
+            const pjStreet = document.getElementById('pjStreet')?.value.trim() || '';
+            const pjNumber = document.getElementById('pjNumber')?.value.trim() || '';
+            const pjDistrict = document.getElementById('pjDistrict')?.value.trim() || '';
+            const pjCity = document.getElementById('pjCity')?.value.trim() || '';
+            const pjState = document.getElementById('pjState')?.value.trim() || '';
+            
+            if (!pjCep || !pjStreet || !pjNumber || !pjDistrict || !pjCity || !pjState) {
+                showMessage('Por favor, preencha todos os campos obrigatórios do endereço (CEP, Logradouro, Número, Bairro, Cidade e UF).', 'error');
+                return;
+            }
+        } else {
+            // Validar endereço PF
+            const isForeigner = document.getElementById('isForeigner')?.checked || false;
+            
+            if (isForeigner) {
+                // Validar endereço estrangeiro
+                const foreignZipCode = document.getElementById('foreignZipCode')?.value.trim() || '';
+                const foreignStreet = document.getElementById('foreignStreet')?.value.trim() || '';
+                const foreignNumber = document.getElementById('foreignNumber')?.value.trim() || '';
+                const foreignCity = document.getElementById('foreignCity')?.value.trim() || '';
+                const foreignState = document.getElementById('foreignState')?.value.trim() || '';
+                
+                if (!foreignZipCode || !foreignStreet || !foreignNumber || !foreignCity || !foreignState) {
+                    showMessage('Por favor, preencha todos os campos obrigatórios do endereço (CEP/Código Postal, Logradouro, Número, Cidade e Estado/Província).', 'error');
+                    return;
+                }
+            } else {
+                // Validar endereço brasileiro
+                const cep = document.getElementById('cep')?.value.trim() || '';
+                const street = document.getElementById('street')?.value.trim() || '';
+                const number = document.getElementById('number')?.value.trim() || '';
+                const district = document.getElementById('district')?.value.trim() || '';
+                const city = document.getElementById('city')?.value.trim() || '';
+                const state = document.getElementById('state')?.value.trim() || '';
+                
+                if (!cep || !street || !number || !district || !city || !state) {
+                    showMessage('Por favor, preencha todos os campos obrigatórios do endereço (CEP, Logradouro, Número, Bairro, Cidade e UF).', 'error');
+                    return;
+                }
             }
         }
         
