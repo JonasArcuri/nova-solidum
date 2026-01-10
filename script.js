@@ -1236,7 +1236,14 @@ if (registerForm) {
                 const foreignCity = document.getElementById('foreignCity')?.value.trim() || '';
                 const foreignState = document.getElementById('foreignState')?.value.trim() || '';
                 
-                if (!foreignZipCode || !foreignStreet || !foreignNumber || !foreignCity || !foreignState) {
+                // ⚠️ VALIDAÇÃO OBRIGATÓRIA DE CEP ESTRANGEIRO
+                if (!foreignZipCode) {
+                    showMessage('CEP/Código Postal é obrigatório. Por favor, preencha o CEP.', 'error');
+                    document.getElementById('foreignZipCode')?.focus();
+                    return;
+                }
+                
+                if (!foreignStreet || !foreignNumber || !foreignCity || !foreignState) {
                     showMessage('Por favor, preencha todos os campos obrigatórios do endereço (CEP/Código Postal, Logradouro, Número, Cidade e Estado/Província).', 'error');
                     return;
                 }
@@ -1249,7 +1256,14 @@ if (registerForm) {
                 const city = document.getElementById('city')?.value.trim() || '';
                 const state = document.getElementById('state')?.value.trim() || '';
                 
-                if (!cep || !street || !number || !district || !city || !state) {
+                // ⚠️ VALIDAÇÃO OBRIGATÓRIA DE CEP BRASILEIRO
+                if (!cep) {
+                    showMessage('CEP é obrigatório. Por favor, preencha o CEP.', 'error');
+                    document.getElementById('cep')?.focus();
+                    return;
+                }
+                
+                if (!street || !number || !district || !city || !state) {
                     showMessage('Por favor, preencha todos os campos obrigatórios do endereço (CEP, Logradouro, Número, Bairro, Cidade e UF).', 'error');
                     return;
                 }
@@ -1275,7 +1289,14 @@ if (registerForm) {
             const pjCity = document.getElementById('pjCity')?.value.trim() || '';
             const pjState = document.getElementById('pjState')?.value.trim() || '';
             
-            if (!pjCep || !pjStreet || !pjNumber || !pjDistrict || !pjCity || !pjState) {
+            // ⚠️ VALIDAÇÃO OBRIGATÓRIA DE CEP PJ
+            if (!pjCep) {
+                showMessage('CEP é obrigatório. Por favor, preencha o CEP da empresa.', 'error');
+                document.getElementById('pjCep')?.focus();
+                return;
+            }
+            
+            if (!pjStreet || !pjNumber || !pjDistrict || !pjCity || !pjState) {
                 showMessage('Por favor, preencha todos os campos obrigatórios do endereço (CEP, Logradouro, Número, Bairro, Cidade e UF).', 'error');
                 return;
             }
@@ -1385,7 +1406,12 @@ if (registerForm) {
                     email: formData.email,
                     phone: formData.phone,
                     birthDate: formData.birthDate,
-                    pepStatus: formData.pepStatus
+                    pepStatus: formData.pepStatus,
+                    endereco: {
+                        cep: isForeigner ? formData.address.zipCode : formData.address.cep,
+                        cidade: formData.address.city,
+                        estado: formData.address.state
+                    }
                 });
             } else {
                 console.log('📋 Coletando dados de PESSOA JURÍDICA...');
@@ -1423,7 +1449,12 @@ if (registerForm) {
                     cnpj: formData.cnpj ? '***' + formData.cnpj.slice(-4) : 'vazio',
                     email: formData.companyEmail,
                     phone: formData.companyPhone,
-                    adminName: formData.majorityAdmin.name
+                    adminName: formData.majorityAdmin.name,
+                    endereco: {
+                        cep: formData.address.cep,
+                        cidade: formData.address.city,
+                        estado: formData.address.state
+                    }
                 });
             }
             
