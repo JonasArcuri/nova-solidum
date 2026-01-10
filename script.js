@@ -129,15 +129,38 @@ function initModalButtons() {
     setTimeout(() => {
         // Selecionar APENAS botões .btn-primary que NÃO estão dentro do formulário
         const allButtons = document.querySelectorAll('.btn-primary');
-        const buttons = Array.from(allButtons).filter(button => 
-            !button.closest('.register-form') && 
-            !button.classList.contains('no-modal') &&
-            button.type !== 'submit'
-        );
         
-        console.log(`🔵 Total de botões .btn-primary: ${allButtons.length}`);
+        // Debug de cada botão
+        console.log(`🔵 Total de botões .btn-primary encontrados: ${allButtons.length}`);
+        allButtons.forEach((button, i) => {
+            console.log(`  Botão ${i + 1}:`, {
+                texto: button.textContent.trim(),
+                type: button.type,
+                hasNoModal: button.classList.contains('no-modal'),
+                dentroDaForm: !!button.closest('.register-form'),
+                dentroDaFormId: button.closest('form')?.id || 'nenhum'
+            });
+        });
+        
+        const buttons = Array.from(allButtons).filter(button => {
+            const isInsideForm = button.closest('.register-form') || button.closest('form');
+            const hasNoModal = button.classList.contains('no-modal');
+            // Apenas excluir se for submit E estiver dentro de um form
+            const isFormSubmitButton = isInsideForm && button.type === 'submit';
+            
+            console.log(`  📋 Analisando "${button.textContent.trim()}":`, {
+                isInsideForm: !!isInsideForm,
+                hasNoModal,
+                type: button.type,
+                isFormSubmitButton,
+                shouldOpen: !isInsideForm && !hasNoModal && !isFormSubmitButton
+            });
+            
+            return !isInsideForm && !hasNoModal;
+        });
+        
         console.log(`🔵 Botões que abrirão o modal: ${buttons.length}`);
-        console.log(`🔵 Botões excluídos (dentro do form ou submit): ${allButtons.length - buttons.length}`);
+        console.log(`🔵 Botões excluídos: ${allButtons.length - buttons.length}`);
         
         if (buttons.length === 0) {
             console.warn('⚠️ Nenhum botão para abrir modal encontrado! (Isso é OK se todos estiverem dentro do form)');
