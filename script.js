@@ -127,33 +127,34 @@ function initModalButtons() {
     
     // Esperar um pouco para garantir que o DOM está pronto
     setTimeout(() => {
-        const buttons = document.querySelectorAll('.btn-primary');
-        console.log(`🔵 Encontrados ${buttons.length} botões com classe .btn-primary`);
+        // Selecionar APENAS botões .btn-primary que NÃO estão dentro do formulário
+        const allButtons = document.querySelectorAll('.btn-primary');
+        const buttons = Array.from(allButtons).filter(button => 
+            !button.closest('.register-form') && 
+            !button.classList.contains('no-modal') &&
+            button.type !== 'submit'
+        );
+        
+        console.log(`🔵 Total de botões .btn-primary: ${allButtons.length}`);
+        console.log(`🔵 Botões que abrirão o modal: ${buttons.length}`);
+        console.log(`🔵 Botões excluídos (dentro do form ou submit): ${allButtons.length - buttons.length}`);
         
         if (buttons.length === 0) {
-            console.error('❌ NENHUM BOTÃO ENCONTRADO!');
-            return;
+            console.warn('⚠️ Nenhum botão para abrir modal encontrado! (Isso é OK se todos estiverem dentro do form)');
         }
         
         buttons.forEach((button, index) => {
-            console.log(`🔵 Vinculando botão ${index + 1}:`, button.textContent.trim());
+            console.log(`🔵 Vinculando botão ${index + 1} para abrir modal:`, button.textContent.trim());
             
             button.addEventListener('click', (e) => {
-                console.log(`🟢 Botão ${index + 1} CLICADO!`, button.textContent.trim());
-                
-                // Check if button is not the submit button inside the form and doesn't have the no-modal class
-                if (!button.closest('.register-form') && !button.classList.contains('no-modal')) {
-                    console.log('🟢 Abrindo modal...');
-                    e.preventDefault();
-                    e.stopPropagation();
-                    openModal();
-                } else {
-                    console.log('⚠️ Botão ignorado (está dentro do form ou tem classe no-modal)');
-                }
+                console.log(`🟢 Botão de modal clicado:`, button.textContent.trim());
+                e.preventDefault();
+                e.stopPropagation();
+                openModal();
             });
         });
         
-        console.log('✅ Todos os botões foram vinculados!');
+        console.log('✅ Todos os botões de modal foram vinculados!');
     }, 100);
 }
 
@@ -1186,20 +1187,48 @@ fileInputs.forEach(input => {
 });
 
 // Form submission handler
+console.log('🔵 Verificando existência do formulário...');
+console.log('🔵 registerForm:', registerForm);
+console.log('🔵 registerForm ID:', registerForm?.id);
+
 if (registerForm) {
+    console.log('✅ Formulário encontrado! ID:', registerForm.id);
+    console.log('✅ Adicionando listener de submit ao formulário...');
+    
     registerForm.addEventListener('submit', async (e) => {
+        console.log('🟢 ========== EVENTO SUBMIT DISPARADO! ==========');
         e.preventDefault();
+        console.log('🟢 preventDefault() executado - impedindo comportamento padrão');
         
         // Garantir que campos ocultos não tenham required antes de validar
         updateRequiredFields();
         
-        const accountType = document.querySelector('input[name="accountType"]:checked').value;
+        const accountTypeRadio = document.querySelector('input[name="accountType"]:checked');
+        if (!accountTypeRadio) {
+            console.error('❌ ERRO: Tipo de conta não selecionado!');
+            showMessage('Por favor, selecione o tipo de cadastro (PF ou PJ).', 'error');
+            return;
+        }
+        
+        const accountType = accountTypeRadio.value;
+        console.log('🟢 Tipo de conta selecionado:', accountType);
+        
         const submitBtn = registerForm.querySelector('button[type="submit"]');
+        if (!submitBtn) {
+            console.error('❌ ERRO: Botão de submit não encontrado!');
+            showMessage('Erro interno: botão de envio não encontrado. Por favor, recarregue a página.', 'error');
+            return;
+        }
+        console.log('🟢 Botão de submit encontrado:', submitBtn);
         
         // Validações específicas
+        console.log('🟢 Iniciando validações...');
         if (accountType === 'PF') {
+            console.log('🟢 Validando Pessoa Física...');
             const isForeigner = document.getElementById('isForeigner').checked;
             const cpf = document.getElementById('cpf').value.replace(/\D/g, '');
+            console.log('🟢 CPF coletado:', cpf ? '***' + cpf.slice(-3) : 'vazio');
+            console.log('🟢 É estrangeiro?', isForeigner);
             
             // CPF é obrigatório apenas para brasileiros
             if (!isForeigner) {
@@ -1269,7 +1298,9 @@ if (registerForm) {
                 }
             }
         } else {
+            console.log('🟢 Validando Pessoa Jurídica...');
             const cnpj = document.getElementById('cnpj').value.replace(/\D/g, '');
+            console.log('🟢 CNPJ coletado:', cnpj ? '***' + cnpj.slice(-4) : 'vazio');
             if (!validateCNPJ(cnpj)) {
                 showMessage('CNPJ inválido. Por favor, verifique o número.', 'error');
                 return;
@@ -1334,11 +1365,13 @@ if (registerForm) {
         }
         
         // Show loading message
+        console.log('🟢 Todas as validações passaram! Preparando envio...');
         showMessage('Enviando formulário...', 'loading');
         
         // Disable submit button
         submitBtn.disabled = true;
         submitBtn.textContent = 'Enviando...';
+        console.log('🟢 Botão desabilitado, iniciando coleta de dados...');
         
         try {
             console.log('📋 ========== COLETANDO DADOS DO FORMULÁRIO ==========');
@@ -1459,15 +1492,50 @@ if (registerForm) {
             }
             
             console.log('✅ Coleta de dados completa! Enviando para backend...');
+            console.log('📋 Dados finais coletados:', {
+                accountType: formData.accountType,
+                temEndereco: !!formData.address,
+                cep: formData.address?.cep || formData.address?.zipCode || 'não encontrado'
+            });
             
             // Enviar formulário para o backend (Tudo em uma etapa)
+            console.log('🚀 Chamando sendFormToBackend()...');
             await sendFormToBackend(formData, accountType, submitBtn);
-        } finally {
+            console.log('✅ sendFormToBackend() concluído!');
+        } catch (error) {
+            console.error('❌ ========== ERRO NO PROCESSAMENTO DO FORMULÁRIO ==========');
+            console.error('❌ Tipo de erro:', error.name);
+            console.error('❌ Mensagem:', error.message);
+            console.error('❌ Stack:', error.stack);
+            
+            showMessage(`Erro ao processar formulário: ${error.message || 'Erro desconhecido'}. Por favor, verifique o console do navegador (F12) para mais detalhes.`, 'error');
+            
             // Re-enable submit button
             submitBtn.disabled = false;
             submitBtn.textContent = 'Enviar';
+        } finally {
+            // Re-enable submit button (caso não tenha sido feito no catch)
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Enviar';
+            }
         }
     });
+    console.log('✅ Listener de submit adicionado com sucesso!');
+} else {
+    console.error('❌ ERRO CRÍTICO: registerForm não encontrado!');
+    console.error('❌ Tentando encontrar novamente...');
+    // Tentar encontrar novamente após um delay
+    setTimeout(() => {
+        const form = document.getElementById('registerForm');
+        if (form) {
+            console.log('✅ Formulário encontrado após delay!');
+            // Re-executar a inicialização
+            location.reload();
+        } else {
+            console.error('❌ Formulário ainda não encontrado após delay');
+        }
+    }, 1000);
 }
 
 // Crypto Price API Integration
