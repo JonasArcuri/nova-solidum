@@ -1164,9 +1164,7 @@ if (registerForm) {
             
             // Validação de PEP removida - campo opcional
             
-            // Validar endereço PF
-            const isForeigner = document.getElementById('isForeigner')?.checked || false;
-            
+            // Validar endereço PF (usar variável isForeigner já declarada acima)
             if (isForeigner) {
                 // Validar endereço estrangeiro
                 const foreignZipCode = document.getElementById('foreignZipCode')?.value.trim() || '';
