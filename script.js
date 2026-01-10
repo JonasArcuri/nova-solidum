@@ -78,17 +78,35 @@ document.querySelectorAll('.feature-card, .mvv-card, .audience-card, .ecosystem-
 });
 
 // Modal functionality
+console.log('🔵 Inicializando variáveis do modal...');
 const registerModal = document.getElementById('registerModal');
 const registerForm = document.getElementById('registerForm');
 const modalClose = document.querySelector('.modal-close');
 const cancelBtn = document.getElementById('cancelBtn');
 const formMessage = document.getElementById('formMessage');
 
+console.log('🔵 Verificação de elementos:');
+console.log('  - registerModal:', !!registerModal);
+console.log('  - registerForm:', !!registerForm);
+console.log('  - modalClose:', !!modalClose);
+console.log('  - cancelBtn:', !!cancelBtn);
+console.log('  - formMessage:', !!formMessage);
+
 // Function to open modal
 function openModal() {
+    console.log('🟢 openModal() CHAMADA!');
+    console.log('🟢 registerModal existe?', !!registerModal);
+    
     if (registerModal) {
+        console.log('🟢 Adicionando classe "show" ao modal...');
         registerModal.classList.add('show');
         document.body.style.overflow = 'hidden';
+        console.log('✅ Modal aberto! Classes do modal:', registerModal.className);
+    } else {
+        console.error('❌ ERRO: registerModal não existe!');
+        console.error('❌ Tentando encontrar o modal manualmente...');
+        const modal = document.getElementById('registerModal');
+        console.error('❌ Modal encontrado manualmente?', !!modal);
     }
 }
 
@@ -105,27 +123,62 @@ function closeModal() {
 
 // Button click handlers - open modal
 function initModalButtons() {
-    const buttons = document.querySelectorAll('.btn-primary');
-    console.log(`Found ${buttons.length} buttons with class .btn-primary`);
+    console.log('🔵 Iniciando initModalButtons()...');
     
-    buttons.forEach(button => {
-        button.addEventListener('click', (e) => {
-            // Check if button is not the submit button inside the form and doesn't have the no-modal class
-            if (!button.closest('.register-form') && !button.classList.contains('no-modal')) {
-                console.log('Opening modal...');
-                e.preventDefault();
-                openModal();
-            }
+    // Esperar um pouco para garantir que o DOM está pronto
+    setTimeout(() => {
+        const buttons = document.querySelectorAll('.btn-primary');
+        console.log(`🔵 Encontrados ${buttons.length} botões com classe .btn-primary`);
+        
+        if (buttons.length === 0) {
+            console.error('❌ NENHUM BOTÃO ENCONTRADO!');
+            return;
+        }
+        
+        buttons.forEach((button, index) => {
+            console.log(`🔵 Vinculando botão ${index + 1}:`, button.textContent.trim());
+            
+            button.addEventListener('click', (e) => {
+                console.log(`🟢 Botão ${index + 1} CLICADO!`, button.textContent.trim());
+                
+                // Check if button is not the submit button inside the form and doesn't have the no-modal class
+                if (!button.closest('.register-form') && !button.classList.contains('no-modal')) {
+                    console.log('🟢 Abrindo modal...');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openModal();
+                } else {
+                    console.log('⚠️ Botão ignorado (está dentro do form ou tem classe no-modal)');
+                }
+            });
         });
-    });
+        
+        console.log('✅ Todos os botões foram vinculados!');
+    }, 100);
 }
 
 // Initialize button handlers when DOM is ready
+console.log('🔵 Script carregado! Estado do documento:', document.readyState);
+
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initModalButtons);
+    console.log('🔵 DOM ainda carregando, aguardando DOMContentLoaded...');
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('🔵 DOMContentLoaded disparado!');
+        initModalButtons();
+    });
 } else {
+    console.log('🔵 DOM já está pronto, inicializando agora...');
     initModalButtons();
 }
+
+// Backup: inicializar novamente após tudo carregar
+window.addEventListener('load', () => {
+    console.log('🔵 Window load completo, verificando botões novamente...');
+    const buttons = document.querySelectorAll('.btn-primary');
+    if (buttons.length > 0) {
+        console.log(`✅ Confirmado: ${buttons.length} botões encontrados após load completo`);
+    }
+});
 
 // Close modal events
 if (modalClose) {
