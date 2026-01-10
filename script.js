@@ -104,15 +104,28 @@ function closeModal() {
 }
 
 // Button click handlers - open modal
-document.querySelectorAll('.btn-primary').forEach(button => {
-    button.addEventListener('click', (e) => {
-        // Check if button is not the submit button inside the form and doesn't have the no-modal class
-        if (!button.closest('.register-form') && !button.classList.contains('no-modal')) {
-            e.preventDefault();
-            openModal();
-        }
+function initModalButtons() {
+    const buttons = document.querySelectorAll('.btn-primary');
+    console.log(`Found ${buttons.length} buttons with class .btn-primary`);
+    
+    buttons.forEach(button => {
+        button.addEventListener('click', (e) => {
+            // Check if button is not the submit button inside the form and doesn't have the no-modal class
+            if (!button.closest('.register-form') && !button.classList.contains('no-modal')) {
+                console.log('Opening modal...');
+                e.preventDefault();
+                openModal();
+            }
+        });
     });
-});
+}
+
+// Initialize button handlers when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initModalButtons);
+} else {
+    initModalButtons();
+}
 
 // Close modal events
 if (modalClose) {
