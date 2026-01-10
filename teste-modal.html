@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Modal - Nova Solidum</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            padding: 50px;
+            font-family: Arial, sans-serif;
+        }
+        .test-button {
+            background: #dc2626;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        .test-button:hover {
+            background: #b91c1c;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f0f0f0;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Teste do Modal - Nova Solidum</h1>
+    
+    <div>
+        <button class="test-button btn-primary">Teste 1: Botão com classe btn-primary</button>
+        <button class="test-button" onclick="openModalDirect()">Teste 2: Abrir modal direto</button>
+        <button class="test-button" onclick="checkModal()">Teste 3: Verificar modal</button>
+    </div>
+    
+    <div class="status" id="status">
+        <strong>Status:</strong> Aguardando teste...
+    </div>
+    
+    <!-- Modal de Registro (cópia simplificada) -->
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <div class="modal-header">
+                <h2 class="modal-title">✅ Modal Funcionando!</h2>
+                <p class="modal-subtitle">Se você está vendo isso, o modal está abrindo corretamente.</p>
+            </div>
+            <div style="padding: 20px;">
+                <p>Teste bem-sucedido! O modal está funcionando.</p>
+                <button class="btn-primary" id="closeTestBtn">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variáveis globais
+        const registerModal = document.getElementById('registerModal');
+        const modalClose = document.querySelector('.modal-close');
+        const statusDiv = document.getElementById('status');
+        
+        function updateStatus(msg) {
+            statusDiv.innerHTML = `<strong>Status:</strong> ${msg}`;
+            console.log('📊 Status:', msg);
+        }
+        
+        // Função para abrir modal
+        function openModal() {
+            console.log('🔵 openModal() chamada');
+            if (registerModal) {
+                registerModal.classList.add('show');
+                document.body.style.overflow = 'hidden';
+                updateStatus('Modal aberto com sucesso! ✅');
+            } else {
+                updateStatus('❌ ERRO: Modal não encontrado!');
+            }
+        }
+        
+        // Função direta para teste
+        function openModalDirect() {
+            console.log('🔵 openModalDirect() chamada');
+            openModal();
+        }
+        
+        // Função para fechar modal
+        function closeModal() {
+            console.log('🔴 closeModal() chamada');
+            if (registerModal) {
+                registerModal.classList.remove('show');
+                document.body.style.overflow = '';
+                updateStatus('Modal fechado.');
+            }
+        }
+        
+        // Verificar se modal existe
+        function checkModal() {
+            const modal = document.getElementById('registerModal');
+            console.log('🔍 Verificando modal...');
+            console.log('Modal element:', modal);
+            console.log('Modal classes:', modal ? modal.className : 'N/A');
+            
+            if (modal) {
+                updateStatus(`✅ Modal encontrado! Classes: "${modal.className}"`);
+            } else {
+                updateStatus('❌ Modal NÃO encontrado!');
+            }
+        }
+        
+        // Event listeners
+        if (modalClose) {
+            modalClose.addEventListener('click', closeModal);
+        }
+        
+        document.getElementById('closeTestBtn')?.addEventListener('click', closeModal);
+        
+        // Close modal quando clicar fora
+        if (registerModal) {
+            registerModal.addEventListener('click', (e) => {
+                if (e.target === registerModal) {
+                    closeModal();
+                }
+            });
+        }
+        
+        // Close modal com ESC
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && registerModal && registerModal.classList.contains('show')) {
+                closeModal();
+            }
+        });
+        
+        // Inicializar botões btn-primary
+        function initModalButtons() {
+            const buttons = document.querySelectorAll('.btn-primary');
+            console.log(`🔵 Encontrados ${buttons.length} botões com classe .btn-primary`);
+            updateStatus(`✅ Encontrados ${buttons.length} botões .btn-primary`);
+            
+            buttons.forEach((button, index) => {
+                button.addEventListener('click', (e) => {
+                    console.log(`🔵 Botão ${index + 1} clicado`);
+                    e.preventDefault();
+                    openModal();
+                });
+            });
+        }
+        
+        // Executar quando DOM estiver pronto
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initModalButtons);
+        } else {
+            initModalButtons();
+        }
+        
+        console.log('✅ Script de teste carregado!');
+    </script>
+</body>
+</html>
