@@ -828,6 +828,7 @@ const pjForm = document.getElementById('pjForm');
 // Função para atualizar campos required baseado no tipo selecionado
 function updateRequiredFields() {
     const selectedType = document.querySelector('input[name="accountType"]:checked')?.value || 'PF';
+    console.log(`🔄 updateRequiredFields() chamada para tipo: ${selectedType}`);
     
     // Lista de IDs de campos de endereço OPCIONAIS (complemento)
     const optionalAddressFields = [
@@ -846,12 +847,10 @@ function updateRequiredFields() {
     if (selectedType === 'PF') {
         pfForm.style.display = 'block';
         pjForm.style.display = 'none';
-        // Remover required dos campos PJ (exceto documentos que não devem ser removidos)
+        // Remover required de TODOS os campos PJ (incluindo documentos)
         pjForm.querySelectorAll('[required]').forEach(field => {
-            // Não remover required de campos de documento se já estiverem marcados como obrigatórios
-            if (field.id !== 'adminIdFront' && field.id !== 'adminIdBack') {
-                field.removeAttribute('required');
-            }
+            field.removeAttribute('required');
+            console.log(`  ✅ Removido required de campo PJ: ${field.id || field.name}`);
         });
         // Garantir que campos PF tenham required (se necessário)
         pfForm.querySelectorAll('input[data-pf-required], textarea[data-pf-required], select[data-pf-required]').forEach(field => {
@@ -880,12 +879,10 @@ function updateRequiredFields() {
     } else {
         pfForm.style.display = 'none';
         pjForm.style.display = 'block';
-        // Remover required dos campos PF (exceto documentos que não devem ser removidos)
+        // Remover required de TODOS os campos PF (incluindo documentos)
         pfForm.querySelectorAll('[required]').forEach(field => {
-            // Não remover required de campos de documento se já estiverem marcados como obrigatórios
-            if (field.id !== 'documentFront' && field.id !== 'documentBack') {
-                field.removeAttribute('required');
-            }
+            field.removeAttribute('required');
+            console.log(`  ✅ Removido required de campo PF: ${field.id || field.name}`);
         });
         // Garantir que campos PJ tenham required (se necessário)
         pjForm.querySelectorAll('input[data-pj-required], textarea[data-pj-required], select[data-pj-required]').forEach(field => {
