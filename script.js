@@ -780,10 +780,14 @@ function updateRequiredFields() {
                 field.setAttribute('required', 'required');
             }
         });
-        // Garantir que documento frente PF tenha required
+        // Garantir que documentos PF tenham required
         const documentFrontPF = document.getElementById('documentFront');
         if (documentFrontPF) {
             documentFrontPF.setAttribute('required', 'required');
+        }
+        const documentBackPF = document.getElementById('documentBack');
+        if (documentBackPF) {
+            documentBackPF.setAttribute('required', 'required');
         }
         // Garantir que campos de endereço obrigatórios tenham required
         const isForeigner = document.getElementById('isForeigner')?.checked || false;
@@ -810,10 +814,14 @@ function updateRequiredFields() {
                 field.setAttribute('required', 'required');
             }
         });
-        // Garantir que documento frente PJ tenha required
+        // Garantir que documentos PJ tenham required
         const adminIdFrontPJ = document.getElementById('adminIdFront');
         if (adminIdFrontPJ) {
             adminIdFrontPJ.setAttribute('required', 'required');
+        }
+        const adminIdBackPJ = document.getElementById('adminIdBack');
+        if (adminIdBackPJ) {
+            adminIdBackPJ.setAttribute('required', 'required');
         }
         // Garantir que campos de endereço PJ obrigatórios tenham required
         requiredAddressFieldsPJ.forEach(fieldId => {
@@ -1226,11 +1234,25 @@ if (registerForm) {
                 documentFront?.focus();
                 return;
             }
+            
+            const documentBack = document.getElementById('documentBack');
+            if (!documentBack || !documentBack.files || documentBack.files.length === 0) {
+                showMessage('Por favor, envie a foto do documento (RG/CNH - Verso). Este campo é obrigatório.', 'error');
+                documentBack?.focus();
+                return;
+            }
         } else {
             const adminIdFront = document.getElementById('adminIdFront');
             if (!adminIdFront || !adminIdFront.files || adminIdFront.files.length === 0) {
                 showMessage('Por favor, envie a foto do documento do administrador (RG/CNH - Frente). Este campo é obrigatório.', 'error');
                 adminIdFront?.focus();
+                return;
+            }
+            
+            const adminIdBack = document.getElementById('adminIdBack');
+            if (!adminIdBack || !adminIdBack.files || adminIdBack.files.length === 0) {
+                showMessage('Por favor, envie a foto do documento do administrador (RG/CNH - Verso). Este campo é obrigatório.', 'error');
+                adminIdBack?.focus();
                 return;
             }
         }
