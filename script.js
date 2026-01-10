@@ -228,6 +228,15 @@ function showMessage(message, type) {
 // Função para enviar formulário para o backend
 async function sendFormToBackend(formData, accountType, submitBtn) {
     try {
+        console.log('📤 ========== INICIANDO ENVIO DO FORMULÁRIO ==========');
+        console.log('📤 Tipo de conta:', accountType);
+        console.log('📤 Dados do formulário:', formData);
+        
+        // Validar integridade dos dados antes de enviar
+        if (!formData || typeof formData !== 'object') {
+            throw new Error('Dados do formulário inválidos');
+        }
+        
         // Criar FormData para enviar arquivos
         const formDataToSend = new FormData();
         
@@ -235,37 +244,72 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
         const honeypotField = document.getElementById('honeypot');
         if (honeypotField) {
             formDataToSend.append('honeypot', honeypotField.value || '');
+            console.log('📤 Honeypot adicionado (anti-bot)');
         }
         
         // Adicionar dados do formulário como JSON
-        formDataToSend.append('formData', JSON.stringify(formData));
+        const formDataJSON = JSON.stringify(formData);
+        console.log('📤 Dados JSON (tamanho):', formDataJSON.length, 'bytes');
+        formDataToSend.append('formData', formDataJSON);
         
         // Adicionar arquivos
         const fileFields = accountType === 'PF'
             ? ['documentFront', 'documentBack', 'selfie', 'proofOfAddress']
             : ['articlesOfAssociation', 'cnpjCard', 'adminIdFront', 'adminIdBack', 'companyProofOfAddress', 'ecnpjCertificate'];
         
+        console.log('📤 Campos de arquivo esperados:', fileFields);
+        
         let filesCount = 0;
         for (const fieldId of fileFields) {
             const input = document.getElementById(fieldId);
             if (input && input.files.length > 0) {
                 const file = input.files[0];
+                console.log(`📤 Arquivo encontrado - ${fieldId}:`, {
+                    nome: file.name,
+                    tipo: file.type,
+                    tamanho: `${(file.size / 1024).toFixed(2)} KB`
+                });
                 formDataToSend.append(fieldId, file);
                 filesCount++;
+            } else {
+                console.log(`📤 Campo ${fieldId}: Sem arquivo`);
+            }
+        }
+        
+        console.log(`📤 Total de arquivos anexados: ${filesCount}`);
+        
+        // Validar que pelo menos os documentos obrigatórios foram anexados
+        const requiredDocs = accountType === 'PF' 
+            ? ['documentFront', 'documentBack'] 
+            : ['adminIdFront', 'adminIdBack'];
+        
+        for (const docField of requiredDocs) {
+            const input = document.getElementById(docField);
+            if (!input || !input.files || input.files.length === 0) {
+                throw new Error(`Documento obrigatório faltando: ${docField}`);
             }
         }
         
         // Enviar para o backend
+        console.log('📤 Enviando para:', BACKEND_CONFIG.url);
+        console.log('📤 Iniciando requisição HTTP POST...');
+        
         const response = await fetch(BACKEND_CONFIG.url, {
             method: 'POST',
             body: formDataToSend
         });
         
+        console.log('📥 Resposta recebida! Status:', response.status, response.statusText);
+        
         if (!response.ok) {
+            console.error('❌ Erro na resposta do servidor:', response.status);
+            
             let errorData;
             try {
                 errorData = await response.json();
+                console.error('❌ Detalhes do erro:', errorData);
             } catch (e) {
+                console.error('❌ Não foi possível ler o erro do servidor');
                 errorData = { error: 'Erro desconhecido', message: `Status ${response.status}` };
             }
             const errorMessage = errorData.message || errorData.error || `Erro ${response.status}`;
@@ -277,6 +321,7 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
                 userMessage = `${errorMessage} (Campo: ${errorField})`;
             }
             
+            console.error('❌ Mensagem de erro para o usuário:', userMessage);
             showMessage(userMessage, 'error');
             submitBtn.disabled = false;
             submitBtn.textContent = 'Enviar';
@@ -284,9 +329,12 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
         }
         
         const result = await response.json();
+        console.log('✅ Resposta do servidor (sucesso):', result);
+        console.log('✅ Anexos enviados:', result.attachmentsCount || filesCount);
         
         // Show success message
         showMessage(`Formulário enviado com sucesso! ${result.attachmentsCount || filesCount} anexo(s) enviado(s). Verifique seu email para confirmação. Entraremos em contato em breve.`, 'success');
+        console.log('✅ ========== ENVIO CONCLUÍDO COM SUCESSO ==========');
         
         // Reset form after 3 seconds
         setTimeout(() => {
@@ -295,14 +343,21 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
         }, 3000);
         
     } catch (error) {
+        console.error('❌ ========== ERRO NO ENVIO DO FORMULÁRIO ==========');
+        console.error('❌ Tipo de erro:', error.name);
+        console.error('❌ Mensagem:', error.message);
+        console.error('❌ Stack:', error.stack);
+        
         // Log de erro genérico sem expor detalhes sensíveis
         const errorMessage = error.message || 'Erro desconhecido';
         
         // Detectar erro de CORS
         if (errorMessage.includes('Failed to fetch') || errorMessage.includes('CORS') || errorMessage.includes('NetworkError')) {
+            console.error('❌ Erro de CORS/Rede detectado');
             showMessage('Erro de conexão. Verifique sua conexão com a internet e tente novamente.', 'error');
         } else {
-            showMessage('Erro ao enviar formulário. Por favor, tente novamente ou entre em contato através do suporte.', 'error');
+            console.error('❌ Erro genérico no envio');
+            showMessage(`Erro ao enviar formulário: ${errorMessage}. Por favor, tente novamente ou entre em contato através do suporte.`, 'error');
         }
     } finally {
         // Re-enable submit button
@@ -1265,13 +1320,18 @@ if (registerForm) {
         submitBtn.textContent = 'Enviando...';
         
         try {
+            console.log('📋 ========== COLETANDO DADOS DO FORMULÁRIO ==========');
+            
             // Coletar dados do formulário
             let formData = {
                 accountType: accountType
             };
             
             if (accountType === 'PF') {
+                console.log('📋 Coletando dados de PESSOA FÍSICA...');
+                
                 const isForeigner = document.getElementById('isForeigner').checked;
+                console.log('📋 É estrangeiro?', isForeigner);
                 
                 // Coletar endereço baseado em estrangeiro ou não
                 let address = {};
@@ -1288,6 +1348,7 @@ if (registerForm) {
                         country: document.getElementById('foreignCountry')?.value || '',
                         isForeign: true
                     };
+                    console.log('📋 Endereço estrangeiro coletado:', address);
                 } else {
                     // Endereço brasileiro
                     address = {
@@ -1300,6 +1361,7 @@ if (registerForm) {
                         state: document.getElementById('state')?.value || '',
                         isForeign: false
                     };
+                    console.log('📋 Endereço brasileiro coletado:', address);
                 }
                 
                 formData = {
@@ -1316,7 +1378,18 @@ if (registerForm) {
                     pepPosition: document.getElementById('pepPosition').value || '',
                     address: address
                 };
+                
+                console.log('📋 Dados PF coletados:', {
+                    fullName: formData.fullName,
+                    cpf: formData.cpf ? '***' + formData.cpf.slice(-3) : 'vazio',
+                    email: formData.email,
+                    phone: formData.phone,
+                    birthDate: formData.birthDate,
+                    pepStatus: formData.pepStatus
+                });
             } else {
+                console.log('📋 Coletando dados de PESSOA JURÍDICA...');
+                
                 formData = {
                     ...formData,
                     companyName: document.getElementById('companyName').value,
@@ -1343,7 +1416,18 @@ if (registerForm) {
                         phone: document.getElementById('majorityAdminPhone').value
                     }
                 };
+                
+                console.log('📋 Dados PJ coletados:', {
+                    companyName: formData.companyName,
+                    tradeName: formData.tradeName,
+                    cnpj: formData.cnpj ? '***' + formData.cnpj.slice(-4) : 'vazio',
+                    email: formData.companyEmail,
+                    phone: formData.companyPhone,
+                    adminName: formData.majorityAdmin.name
+                });
             }
+            
+            console.log('✅ Coleta de dados completa! Enviando para backend...');
             
             // Enviar formulário para o backend (Tudo em uma etapa)
             await sendFormToBackend(formData, accountType, submitBtn);
