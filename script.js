@@ -701,9 +701,12 @@ function updateRequiredFields() {
     if (selectedType === 'PF') {
         pfForm.style.display = 'block';
         pjForm.style.display = 'none';
-        // Remover required dos campos PJ
+        // Remover required dos campos PJ (exceto documentos que não devem ser removidos)
         pjForm.querySelectorAll('[required]').forEach(field => {
-            field.removeAttribute('required');
+            // Não remover required de campos de documento se já estiverem marcados como obrigatórios
+            if (field.id !== 'adminIdFront' && field.id !== 'adminIdBack') {
+                field.removeAttribute('required');
+            }
         });
         // Garantir que campos PF tenham required (se necessário)
         pfForm.querySelectorAll('input[data-pf-required], textarea[data-pf-required], select[data-pf-required]').forEach(field => {
@@ -711,6 +714,11 @@ function updateRequiredFields() {
                 field.setAttribute('required', 'required');
             }
         });
+        // Garantir que documento frente PF tenha required
+        const documentFrontPF = document.getElementById('documentFront');
+        if (documentFrontPF) {
+            documentFrontPF.setAttribute('required', 'required');
+        }
         // Garantir que campos de endereço obrigatórios tenham required
         const isForeigner = document.getElementById('isForeigner')?.checked || false;
         const requiredFields = isForeigner ? requiredAddressFieldsPF.foreign : requiredAddressFieldsPF.brazil;
@@ -723,9 +731,12 @@ function updateRequiredFields() {
     } else {
         pfForm.style.display = 'none';
         pjForm.style.display = 'block';
-        // Remover required dos campos PF
+        // Remover required dos campos PF (exceto documentos que não devem ser removidos)
         pfForm.querySelectorAll('[required]').forEach(field => {
-            field.removeAttribute('required');
+            // Não remover required de campos de documento se já estiverem marcados como obrigatórios
+            if (field.id !== 'documentFront' && field.id !== 'documentBack') {
+                field.removeAttribute('required');
+            }
         });
         // Garantir que campos PJ tenham required (se necessário)
         pjForm.querySelectorAll('input[data-pj-required], textarea[data-pj-required], select[data-pj-required]').forEach(field => {
@@ -733,6 +744,11 @@ function updateRequiredFields() {
                 field.setAttribute('required', 'required');
             }
         });
+        // Garantir que documento frente PJ tenha required
+        const adminIdFrontPJ = document.getElementById('adminIdFront');
+        if (adminIdFrontPJ) {
+            adminIdFrontPJ.setAttribute('required', 'required');
+        }
         // Garantir que campos de endereço PJ obrigatórios tenham required
         requiredAddressFieldsPJ.forEach(fieldId => {
             const field = document.getElementById(fieldId);
@@ -1081,32 +1097,7 @@ if (registerForm) {
             }
             
             // Validação de PEP removida - campo opcional
-        } else {
-            const cnpj = document.getElementById('cnpj').value.replace(/\D/g, '');
-            if (!validateCNPJ(cnpj)) {
-                showMessage('CNPJ inválido. Por favor, verifique o número.', 'error');
-                return;
-            }
             
-            const adminCpf = document.getElementById('majorityAdminCpf').value.replace(/\D/g, '');
-            if (!validateCPF(adminCpf)) {
-                showMessage('CPF do administrador inválido. Por favor, verifique o número.', 'error');
-                return;
-            }
-            
-            // Validar endereço PJ
-            const pjCep = document.getElementById('pjCep')?.value.trim() || '';
-            const pjStreet = document.getElementById('pjStreet')?.value.trim() || '';
-            const pjNumber = document.getElementById('pjNumber')?.value.trim() || '';
-            const pjDistrict = document.getElementById('pjDistrict')?.value.trim() || '';
-            const pjCity = document.getElementById('pjCity')?.value.trim() || '';
-            const pjState = document.getElementById('pjState')?.value.trim() || '';
-            
-            if (!pjCep || !pjStreet || !pjNumber || !pjDistrict || !pjCity || !pjState) {
-                showMessage('Por favor, preencha todos os campos obrigatórios do endereço (CEP, Logradouro, Número, Bairro, Cidade e UF).', 'error');
-                return;
-            }
-        } else {
             // Validar endereço PF
             const isForeigner = document.getElementById('isForeigner')?.checked || false;
             
@@ -1136,9 +1127,49 @@ if (registerForm) {
                     return;
                 }
             }
+        } else {
+            const cnpj = document.getElementById('cnpj').value.replace(/\D/g, '');
+            if (!validateCNPJ(cnpj)) {
+                showMessage('CNPJ inválido. Por favor, verifique o número.', 'error');
+                return;
+            }
+            
+            const adminCpf = document.getElementById('majorityAdminCpf').value.replace(/\D/g, '');
+            if (!validateCPF(adminCpf)) {
+                showMessage('CPF do administrador inválido. Por favor, verifique o número.', 'error');
+                return;
+            }
+            
+            // Validar endereço PJ
+            const pjCep = document.getElementById('pjCep')?.value.trim() || '';
+            const pjStreet = document.getElementById('pjStreet')?.value.trim() || '';
+            const pjNumber = document.getElementById('pjNumber')?.value.trim() || '';
+            const pjDistrict = document.getElementById('pjDistrict')?.value.trim() || '';
+            const pjCity = document.getElementById('pjCity')?.value.trim() || '';
+            const pjState = document.getElementById('pjState')?.value.trim() || '';
+            
+            if (!pjCep || !pjStreet || !pjNumber || !pjDistrict || !pjCity || !pjState) {
+                showMessage('Por favor, preencha todos os campos obrigatórios do endereço (CEP, Logradouro, Número, Bairro, Cidade e UF).', 'error');
+                return;
+            }
         }
         
-        // Documentos e fotos são opcionais conforme solicitado pelo usuário
+        // Validação de documento obrigatório
+        if (accountType === 'PF') {
+            const documentFront = document.getElementById('documentFront');
+            if (!documentFront || !documentFront.files || documentFront.files.length === 0) {
+                showMessage('Por favor, envie a foto do documento (RG/CNH - Frente). Este campo é obrigatório.', 'error');
+                documentFront?.focus();
+                return;
+            }
+        } else {
+            const adminIdFront = document.getElementById('adminIdFront');
+            if (!adminIdFront || !adminIdFront.files || adminIdFront.files.length === 0) {
+                showMessage('Por favor, envie a foto do documento do administrador (RG/CNH - Frente). Este campo é obrigatório.', 'error');
+                adminIdFront?.focus();
+                return;
+            }
+        }
         
         // Show loading message
         showMessage('Enviando formulário...', 'loading');
