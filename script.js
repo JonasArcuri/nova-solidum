@@ -23,7 +23,7 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
                 top: offsetPosition,
                 behavior: 'smooth'
             });
-            
+
             // Close mobile menu if open
             if (navMenu.classList.contains('active')) {
                 navMenu.classList.remove('active');
@@ -39,12 +39,12 @@ const header = document.querySelector('.header');
 
 window.addEventListener('scroll', () => {
     const currentScroll = window.pageYOffset;
-    
+
     if (currentScroll <= 0) {
         header.classList.remove('scroll-up');
         return;
     }
-    
+
     if (currentScroll > lastScroll && !header.classList.contains('scroll-down')) {
         // Scrolling down
         header.classList.remove('scroll-up');
@@ -54,7 +54,7 @@ window.addEventListener('scroll', () => {
         header.classList.remove('scroll-down');
         header.classList.add('scroll-up');
     }
-    
+
     lastScroll = currentScroll;
 });
 
@@ -96,7 +96,7 @@ console.log('  - formMessage:', !!formMessage);
 function openModal() {
     console.log('🟢 openModal() CHAMADA!');
     console.log('🟢 registerModal existe?', !!registerModal);
-    
+
     if (registerModal) {
         console.log('🟢 Adicionando classe "show" ao modal...');
         registerModal.classList.add('show');
@@ -124,12 +124,12 @@ function closeModal() {
 // Button click handlers - open modal
 function initModalButtons() {
     console.log('🔵 Iniciando initModalButtons()...');
-    
+
     // Esperar um pouco para garantir que o DOM está pronto
     setTimeout(() => {
         // Selecionar APENAS botões .btn-primary que NÃO estão dentro do formulário
         const allButtons = document.querySelectorAll('.btn-primary');
-        
+
         // Debug de cada botão
         console.log(`🔵 Total de botões .btn-primary encontrados: ${allButtons.length}`);
         allButtons.forEach((button, i) => {
@@ -141,13 +141,13 @@ function initModalButtons() {
                 dentroDaFormId: button.closest('form')?.id || 'nenhum'
             });
         });
-        
+
         const buttons = Array.from(allButtons).filter(button => {
             const isInsideForm = button.closest('.register-form') || button.closest('form');
             const hasNoModal = button.classList.contains('no-modal');
             // Apenas excluir se for submit E estiver dentro de um form
             const isFormSubmitButton = isInsideForm && button.type === 'submit';
-            
+
             console.log(`  📋 Analisando "${button.textContent.trim()}":`, {
                 isInsideForm: !!isInsideForm,
                 hasNoModal,
@@ -155,20 +155,20 @@ function initModalButtons() {
                 isFormSubmitButton,
                 shouldOpen: !isInsideForm && !hasNoModal && !isFormSubmitButton
             });
-            
+
             return !isInsideForm && !hasNoModal;
         });
-        
+
         console.log(`🔵 Botões que abrirão o modal: ${buttons.length}`);
         console.log(`🔵 Botões excluídos: ${allButtons.length - buttons.length}`);
-        
+
         if (buttons.length === 0) {
             console.warn('⚠️ Nenhum botão para abrir modal encontrado! (Isso é OK se todos estiverem dentro do form)');
         }
-        
+
         buttons.forEach((button, index) => {
             console.log(`🔵 Vinculando botão ${index + 1} para abrir modal:`, button.textContent.trim());
-            
+
             button.addEventListener('click', (e) => {
                 console.log(`🟢 Botão de modal clicado:`, button.textContent.trim());
                 e.preventDefault();
@@ -176,7 +176,7 @@ function initModalButtons() {
                 openModal();
             });
         });
-        
+
         console.log('✅ Todos os botões de modal foram vinculados!');
     }, 100);
 }
@@ -244,7 +244,7 @@ const BACKEND_CONFIG = (() => {
 function showMessage(message, type) {
     formMessage.textContent = message;
     formMessage.className = `form-message show ${type}`;
-    
+
     // Scroll to message
     formMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
@@ -255,34 +255,34 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
         console.log('📤 ========== INICIANDO ENVIO DO FORMULÁRIO ==========');
         console.log('📤 Tipo de conta:', accountType);
         console.log('📤 Dados do formulário:', formData);
-        
+
         // Validar integridade dos dados antes de enviar
         if (!formData || typeof formData !== 'object') {
             throw new Error('Dados do formulário inválidos');
         }
-        
+
         // Criar FormData para enviar arquivos
         const formDataToSend = new FormData();
-        
+
         // Adicionar honeypot (campo oculto anti-bot)
         const honeypotField = document.getElementById('honeypot');
         if (honeypotField) {
             formDataToSend.append('honeypot', honeypotField.value || '');
             console.log('📤 Honeypot adicionado (anti-bot)');
         }
-        
+
         // Adicionar dados do formulário como JSON
         const formDataJSON = JSON.stringify(formData);
         console.log('📤 Dados JSON (tamanho):', formDataJSON.length, 'bytes');
         formDataToSend.append('formData', formDataJSON);
-        
+
         // Adicionar arquivos
         const fileFields = accountType === 'PF'
             ? ['documentFront', 'documentBack', 'selfie', 'proofOfAddress']
             : ['articlesOfAssociation', 'cnpjCard', 'adminIdFront', 'adminIdBack', 'companyProofOfAddress', 'ecnpjCertificate'];
-        
+
         console.log('📤 Campos de arquivo esperados:', fileFields);
-        
+
         let filesCount = 0;
         for (const fieldId of fileFields) {
             const input = document.getElementById(fieldId);
@@ -299,35 +299,35 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
                 console.log(`📤 Campo ${fieldId}: Sem arquivo`);
             }
         }
-        
+
         console.log(`📤 Total de arquivos anexados: ${filesCount}`);
-        
+
         // Validar que pelo menos os documentos obrigatórios foram anexados
-        const requiredDocs = accountType === 'PF' 
-            ? ['documentFront', 'documentBack'] 
+        const requiredDocs = accountType === 'PF'
+            ? ['documentFront', 'documentBack']
             : ['adminIdFront', 'adminIdBack'];
-        
+
         for (const docField of requiredDocs) {
             const input = document.getElementById(docField);
             if (!input || !input.files || input.files.length === 0) {
                 throw new Error(`Documento obrigatório faltando: ${docField}`);
             }
         }
-        
+
         // Enviar para o backend
         console.log('📤 Enviando para:', BACKEND_CONFIG.url);
         console.log('📤 Iniciando requisição HTTP POST...');
-        
+
         const response = await fetch(BACKEND_CONFIG.url, {
             method: 'POST',
             body: formDataToSend
         });
-        
+
         console.log('📥 Resposta recebida! Status:', response.status, response.statusText);
-        
+
         if (!response.ok) {
             console.error('❌ Erro na resposta do servidor:', response.status);
-            
+
             let errorData;
             try {
                 errorData = await response.json();
@@ -338,43 +338,43 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
             }
             const errorMessage = errorData.message || errorData.error || `Erro ${response.status}`;
             const errorField = errorData.field || '';
-            
-            
+
+
             let userMessage = errorMessage;
             if (errorField) {
                 userMessage = `${errorMessage} (Campo: ${errorField})`;
             }
-            
+
             console.error('❌ Mensagem de erro para o usuário:', userMessage);
             showMessage(userMessage, 'error');
             submitBtn.disabled = false;
             submitBtn.textContent = 'Enviar';
             return;
         }
-        
+
         const result = await response.json();
         console.log('✅ Resposta do servidor (sucesso):', result);
         console.log('✅ Anexos enviados:', result.attachmentsCount || filesCount);
-        
+
         // Show success message
         showMessage(`Formulário enviado com sucesso! ${result.attachmentsCount || filesCount} anexo(s) enviado(s). Verifique seu email para confirmação. Entraremos em contato em breve.`, 'success');
         console.log('✅ ========== ENVIO CONCLUÍDO COM SUCESSO ==========');
-        
+
         // Reset form after 3 seconds
         setTimeout(() => {
             registerForm.reset();
             closeModal();
         }, 3000);
-        
+
     } catch (error) {
         console.error('❌ ========== ERRO NO ENVIO DO FORMULÁRIO ==========');
         console.error('❌ Tipo de erro:', error.name);
         console.error('❌ Mensagem:', error.message);
         console.error('❌ Stack:', error.stack);
-        
+
         // Log de erro genérico sem expor detalhes sensíveis
         const errorMessage = error.message || 'Erro desconhecido';
-        
+
         // Detectar erro de CORS
         if (errorMessage.includes('Failed to fetch') || errorMessage.includes('CORS') || errorMessage.includes('NetworkError')) {
             console.error('❌ Erro de CORS/Rede detectado');
@@ -398,7 +398,7 @@ function validateCPF(cpf) {
     cpf = cpf.replace(/[^\d]/g, '');
     if (cpf.length !== 11) return false;
     if (/^(\d)\1{10}$/.test(cpf)) return false; // Sequências repetidas
-    
+
     let sum = 0;
     for (let i = 0; i < 9; i++) {
         sum += parseInt(cpf.charAt(i)) * (10 - i);
@@ -406,7 +406,7 @@ function validateCPF(cpf) {
     let digit = 11 - (sum % 11);
     if (digit >= 10) digit = 0;
     if (digit !== parseInt(cpf.charAt(9))) return false;
-    
+
     sum = 0;
     for (let i = 0; i < 10; i++) {
         sum += parseInt(cpf.charAt(i)) * (11 - i);
@@ -414,7 +414,7 @@ function validateCPF(cpf) {
     digit = 11 - (sum % 11);
     if (digit >= 10) digit = 0;
     if (digit !== parseInt(cpf.charAt(10))) return false;
-    
+
     return true;
 }
 
@@ -423,34 +423,34 @@ function validateCNPJ(cnpj) {
     cnpj = cnpj.replace(/[^\d]/g, '');
     if (cnpj.length !== 14) return false;
     if (/^(\d)\1{13}$/.test(cnpj)) return false; // Sequências repetidas
-    
+
     let length = cnpj.length - 2;
     let numbers = cnpj.substring(0, length);
     let digits = cnpj.substring(length);
     let sum = 0;
     let pos = length - 7;
-    
+
     for (let i = length; i >= 1; i--) {
         sum += numbers.charAt(length - i) * pos--;
         if (pos < 2) pos = 9;
     }
-    
+
     let result = sum % 11 < 2 ? 0 : 11 - sum % 11;
     if (result !== parseInt(digits.charAt(0))) return false;
-    
+
     length = length + 1;
     numbers = cnpj.substring(0, length);
     sum = 0;
     pos = length - 7;
-    
+
     for (let i = length; i >= 1; i--) {
         sum += numbers.charAt(length - i) * pos--;
         if (pos < 2) pos = 9;
     }
-    
+
     result = sum % 11 < 2 ? 0 : 11 - sum % 11;
     if (result !== parseInt(digits.charAt(1))) return false;
-    
+
     return true;
 }
 
@@ -469,32 +469,32 @@ function validateAge(birthDate) {
 // Validação de arquivo
 function validateFile(file, maxSizeMB = 10, allowedTypes = ['image/jpeg', 'image/png', 'application/pdf']) {
     if (!file) return { valid: false, error: 'Arquivo não selecionado' };
-    
+
     const maxSize = maxSizeMB * 1024 * 1024; // Converter para bytes
     if (file.size > maxSize) {
         return { valid: false, error: `Arquivo muito grande. Máximo: ${maxSizeMB}MB` };
     }
-    
+
     if (!allowedTypes.includes(file.type)) {
         return { valid: false, error: `Tipo de arquivo não permitido. Permitidos: ${allowedTypes.join(', ')}` };
     }
-    
+
     return { valid: true };
 }
 
 // Validação de arquivo para upload (máximo 10MB)
 function validateFileForEmail(file, maxSizeKB = 10, allowedTypes = ['image/jpeg', 'image/png', 'application/pdf']) {
     if (!file) return { valid: false, error: 'Arquivo não selecionado' };
-    
+
     const maxSize = maxSizeKB * 1024; // Converter para bytes
     if (file.size > maxSize) {
         return { valid: false, error: `Arquivo muito grande para envio por email. Máximo: ${maxSizeKB}KB. Tamanho atual: ${(file.size / 1024).toFixed(2)}KB` };
     }
-    
+
     if (!allowedTypes.includes(file.type)) {
         return { valid: false, error: `Tipo de arquivo não permitido. Permitidos: ${allowedTypes.join(', ')}` };
     }
-    
+
     return { valid: true };
 }
 
@@ -520,33 +520,33 @@ async function compressImageWithTinify(file, maxSizeKB = 15) {
     if (!TINIFY_CONFIG.enabled) {
         throw new Error('Tinify não habilitado');
     }
-    
+
     // Verificar se backend está configurado
     if (!TINIFY_CONFIG.backendUrl) {
         throw new Error('Backend URL não configurada. Configure TINIFY_CONFIG.backendUrl');
     }
-    
+
     // Se não for imagem, não usar Tinify
     if (!file.type.startsWith('image/')) {
         throw new Error('Tinify só funciona com imagens');
     }
-    
+
     // Verificar tamanho do arquivo (Tinify limita a 5MB)
     if (file.size > 5 * 1024 * 1024) {
         throw new Error('Arquivo muito grande para Tinify (máx. 5MB)');
     }
-    
+
     try {
         // Criar FormData para enviar arquivo
         const formData = new FormData();
         formData.append('image', file);
-        
+
         // Fazer requisição para o backend proxy
         const response = await fetch(TINIFY_CONFIG.backendUrl, {
             method: 'POST',
             body: formData
         });
-        
+
         if (!response.ok) {
             let errorMessage = `Erro ${response.status}: ${response.statusText}`;
             try {
@@ -555,7 +555,7 @@ async function compressImageWithTinify(file, maxSizeKB = 15) {
             } catch (e) {
                 // Se não conseguir ler JSON, usar mensagem padrão
             }
-            
+
             if (response.status === 401) {
                 throw new Error('Serviço temporariamente indisponível');
             } else if (response.status === 429) {
@@ -563,19 +563,19 @@ async function compressImageWithTinify(file, maxSizeKB = 15) {
             } else if (response.status === 0 || response.status === 500) {
                 throw new Error('Serviço temporariamente indisponível');
             }
-            
+
             throw new Error('Erro ao processar imagem');
         }
-        
+
         const result = await response.json();
-        
+
         if (!result.success || !result.base64) {
             throw new Error('Resposta inválida do backend');
         }
-        
+
         const compressedSize = result.compressedSize / 1024;
         const originalSize = result.originalSize / 1024;
-        
+
         // Se ainda estiver acima do limite, redimensionar
         if (compressedSize > maxSizeKB) {
             // Converter base64 para blob e redimensionar
@@ -588,10 +588,10 @@ async function compressImageWithTinify(file, maxSizeKB = 15) {
             const blob = new Blob([bytes], { type: result.mimeType });
             return await resizeAndCompressBlob(blob, maxSizeKB);
         }
-        
+
         // Retornar base64 diretamente
         return result.base64;
-        
+
     } catch (error) {
         // Se for erro de network, verificar se backend está rodando
         if (error.message.includes('Failed to fetch') || error.message.includes('Backend não disponível')) {
@@ -611,36 +611,36 @@ async function resizeAndCompressBlob(blob, maxSizeKB) {
                 const maxSizeBytes = maxSizeKB * 1024;
                 const MAX_WIDTH = 800;
                 const MAX_HEIGHT = 800;
-                
+
                 let width = img.width;
                 let height = img.height;
-                
+
                 // Redimensionar se necessário
                 if (width > MAX_WIDTH || height > MAX_HEIGHT) {
                     const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
                     width = width * ratio;
                     height = height * ratio;
                 }
-                
+
                 const canvas = document.createElement('canvas');
                 canvas.width = width;
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
-                
+
                 // Tentar diferentes qualidades
-                    const tryCompress = (quality) => {
-                        const base64 = canvas.toDataURL('image/jpeg', quality);
-                        const base64Size = new Blob([base64]).size;
-                        
-                        if (base64Size <= maxSizeBytes || quality <= 0.15) {
-                            resolve(base64);
-                        } else {
-                            tryCompress(Math.max(0.15, quality - 0.05)); // Redução gradual, mínimo 15%
-                        }
-                    };
-                    
-                    tryCompress(0.8); // Qualidade inicial boa
+                const tryCompress = (quality) => {
+                    const base64 = canvas.toDataURL('image/jpeg', quality);
+                    const base64Size = new Blob([base64]).size;
+
+                    if (base64Size <= maxSizeBytes || quality <= 0.15) {
+                        resolve(base64);
+                    } else {
+                        tryCompress(Math.max(0.15, quality - 0.05)); // Redução gradual, mínimo 15%
+                    }
+                };
+
+                tryCompress(0.8); // Qualidade inicial boa
             };
             img.onerror = reject;
             img.src = e.target.result;
@@ -672,7 +672,7 @@ async function compressImage(file, maxSizeKB = 15) {
             // Continuar com método local
         }
     }
-    
+
     // Método local (fallback ou se Tinify não estiver habilitado)
     return new Promise((resolve, reject) => {
         // Se não for imagem, retornar original
@@ -680,10 +680,10 @@ async function compressImage(file, maxSizeKB = 15) {
             fileToBase64(file).then(resolve).catch(reject);
             return;
         }
-        
+
         const maxSizeBytes = maxSizeKB * 1024;
         const reader = new FileReader();
-        
+
         reader.onload = (e) => {
             const img = new Image();
             img.onload = () => {
@@ -691,40 +691,40 @@ async function compressImage(file, maxSizeKB = 15) {
                 // Otimizado para permitir múltiplas imagens (15KB permite boa qualidade em tamanho moderado)
                 const MAX_WIDTH = 1400;
                 const MAX_HEIGHT = 1400;
-                
+
                 let width = img.width;
                 let height = img.height;
-                
+
                 // Redimensionar se necessário
                 if (width > MAX_WIDTH || height > MAX_HEIGHT) {
                     const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
                     width = width * ratio;
                     height = height * ratio;
                 }
-                
+
                 // Criar canvas
                 const canvas = document.createElement('canvas');
                 canvas.width = width;
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
-                
+
                 // Desenhar imagem redimensionada
                 ctx.drawImage(img, 0, 0, width, height);
-                
+
                 // Tentar diferentes qualidades até ficar abaixo do limite
                 const tryCompress = (quality, attempt = 0) => {
                     // Determinar formato de saída - sempre JPEG para melhor compressão
                     let outputFormat = 'image/jpeg';
-                    
+
                     // Se for PNG, converter para JPEG
                     if (file.type === 'image/png') {
                         outputFormat = 'image/jpeg';
                     }
-                    
+
                     // Converter para base64
                     const base64 = canvas.toDataURL(outputFormat, quality);
                     const base64Size = new Blob([base64]).size; // Tamanho total da string base64
-                    
+
                     if (base64Size <= maxSizeBytes || quality <= 0.15 || attempt >= 25) {
                         // Tamanho OK, qualidade mínima (15% para manter legibilidade), ou muitas tentativas
                         resolve(base64);
@@ -739,19 +739,19 @@ async function compressImage(file, maxSizeKB = 15) {
                         tryCompress(newQuality, attempt + 1);
                     }
                 };
-                
+
                 // Começar com qualidade 0.8 (80%) - bom equilíbrio entre qualidade e tamanho
                 tryCompress(0.8);
             };
-            
+
             img.onerror = () => {
                 // Se falhar ao carregar imagem, tentar método original
                 fileToBase64(file).then(resolve).catch(reject);
             };
-            
+
             img.src = e.target.result;
         };
-        
+
         reader.onerror = reject;
         reader.readAsDataURL(file);
     });
@@ -761,7 +761,7 @@ async function compressImage(file, maxSizeKB = 15) {
 async function fetchCEP(cep) {
     cep = cep.replace(/[^\d]/g, '');
     if (cep.length !== 8) return null;
-    
+
     try {
         const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
         const data = await response.json();
@@ -829,76 +829,67 @@ const pjForm = document.getElementById('pjForm');
 function updateRequiredFields() {
     const selectedType = document.querySelector('input[name="accountType"]:checked')?.value || 'PF';
     console.log(`🔄 updateRequiredFields() chamada para tipo: ${selectedType}`);
-    
+
     // Lista de IDs de campos de endereço OPCIONAIS (complemento)
     const optionalAddressFields = [
         'complement', 'foreignComplement', 'foreignDistrict', 'foreignCountry',
         'pjComplement'
     ];
-    
+
     // Lista de IDs de campos de endereço OBRIGATÓRIOS
     const requiredAddressFieldsPF = {
         brazil: ['cep', 'street', 'number', 'district', 'city', 'state'],
         foreign: ['foreignStreet', 'foreignNumber', 'foreignCity', 'foreignState', 'foreignZipCode']
     };
-    
+
     const requiredAddressFieldsPJ = ['pjCep', 'pjStreet', 'pjNumber', 'pjDistrict', 'pjCity', 'pjState'];
-    
+
     if (selectedType === 'PF') {
         pfForm.style.display = 'block';
         pjForm.style.display = 'none';
         // Remover required de TODOS os campos PJ (incluindo documentos)
         pjForm.querySelectorAll('[required]').forEach(field => {
             field.removeAttribute('required');
-            console.log(`  ✅ Removido required de campo PJ: ${field.id || field.name}`);
         });
-        // Garantir que campos PF tenham required (se necessário)
-        pfForm.querySelectorAll('input[data-pf-required], textarea[data-pf-required], select[data-pf-required]').forEach(field => {
-            if (!optionalAddressFields.includes(field.id)) {
-                field.setAttribute('required', 'required');
-            }
+
+        // Restaurar required para campos PF marcados
+        pfForm.querySelectorAll('[data-pf-required]').forEach(field => {
+            field.setAttribute('required', 'required');
         });
+
         // Garantir que documentos PF tenham required
         const documentFrontPF = document.getElementById('documentFront');
-        if (documentFrontPF) {
-            documentFrontPF.setAttribute('required', 'required');
-        }
+        if (documentFrontPF) documentFrontPF.setAttribute('required', 'required');
         const documentBackPF = document.getElementById('documentBack');
-        if (documentBackPF) {
-            documentBackPF.setAttribute('required', 'required');
-        }
-        // Garantir que campos de endereço obrigatórios tenham required
+        if (documentBackPF) documentBackPF.setAttribute('required', 'required');
+
+        // Garantir que campos de endereço obrigatórios tenham required baseado no status de estrangeiro
         const isForeigner = document.getElementById('isForeigner')?.checked || false;
-        const requiredFields = isForeigner ? requiredAddressFieldsPF.foreign : requiredAddressFieldsPF.brazil;
-        requiredFields.forEach(fieldId => {
-            const field = document.getElementById(fieldId);
-            if (field) {
-                field.setAttribute('required', 'required');
-            }
-        });
+        if (isForeigner) {
+            requiredAddressFieldsPF.brazil.forEach(id => document.getElementById(id)?.removeAttribute('required'));
+            requiredAddressFieldsPF.foreign.forEach(id => document.getElementById(id)?.setAttribute('required', 'required'));
+        } else {
+            requiredAddressFieldsPF.foreign.forEach(id => document.getElementById(id)?.removeAttribute('required'));
+            requiredAddressFieldsPF.brazil.forEach(id => document.getElementById(id)?.setAttribute('required', 'required'));
+        }
     } else {
         pfForm.style.display = 'none';
         pjForm.style.display = 'block';
         // Remover required de TODOS os campos PF (incluindo documentos)
         pfForm.querySelectorAll('[required]').forEach(field => {
             field.removeAttribute('required');
-            console.log(`  ✅ Removido required de campo PF: ${field.id || field.name}`);
         });
-        // Garantir que campos PJ tenham required (se necessário)
-        pjForm.querySelectorAll('input[data-pj-required], textarea[data-pj-required], select[data-pj-required]').forEach(field => {
-            if (!optionalAddressFields.includes(field.id)) {
-                field.setAttribute('required', 'required');
-            }
+
+        // Restaurar required para campos PJ marcados
+        pjForm.querySelectorAll('[data-pj-required]').forEach(field => {
+            field.setAttribute('required', 'required');
         });
+
         // Garantir que documentos PJ tenham required
         const adminIdFrontPJ = document.getElementById('adminIdFront');
-        if (adminIdFrontPJ) {
-            adminIdFrontPJ.setAttribute('required', 'required');
-        }
+        if (adminIdFrontPJ) adminIdFrontPJ.setAttribute('required', 'required');
         const adminIdBackPJ = document.getElementById('adminIdBack');
-        if (adminIdBackPJ) {
-            adminIdBackPJ.setAttribute('required', 'required');
-        }
+        if (adminIdBackPJ) adminIdBackPJ.setAttribute('required', 'required');
         // Garantir que campos de endereço PJ obrigatórios tenham required
         requiredAddressFieldsPJ.forEach(fieldId => {
             const field = document.getElementById(fieldId);
@@ -914,14 +905,14 @@ if (accountTypeRadios.length > 0) {
     function initFormFields() {
         updateRequiredFields();
     }
-    
+
     // Inicializar campos required na carga da página
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initFormFields);
     } else {
         initFormFields();
     }
-    
+
     // Atualizar quando o tipo mudar
     accountTypeRadios.forEach(radio => {
         radio.addEventListener('change', (e) => {
@@ -967,7 +958,7 @@ if (cepInput) {
         // Só buscar CEP se não for estrangeiro
         const isForeigner = document.getElementById('isForeigner')?.checked || false;
         if (isForeigner) return;
-        
+
         e.target.value = formatCEP(e.target.value);
         if (e.target.value.replace(/\D/g, '').length === 8) {
             fetchCEP(e.target.value).then(data => {
@@ -976,7 +967,7 @@ if (cepInput) {
                     const districtInput = document.getElementById('district');
                     const cityInput = document.getElementById('city');
                     const stateInput = document.getElementById('state');
-                    
+
                     if (streetInput) streetInput.value = data.logradouro || '';
                     if (districtInput) districtInput.value = data.bairro || '';
                     if (cityInput) cityInput.value = data.localidade || '';
@@ -1040,7 +1031,7 @@ if (cpfInput) {
     cpfInput.addEventListener('blur', (e) => {
         const isForeigner = document.getElementById('isForeigner')?.checked || false;
         const cpf = e.target.value.replace(/\D/g, '');
-        
+
         // CPF agora é obrigatório para todos
         if (!cpf) {
             e.target.setCustomValidity('CPF é obrigatório');
@@ -1086,21 +1077,21 @@ const foreignAddressFields = {
 if (isForeignerCheckbox) {
     function updateForeignerFields() {
         const isForeigner = isForeignerCheckbox.checked;
-        
+
         // Atualizar CPF - Sempre obrigatório agora
         if (cpfInput) {
             cpfInput.setAttribute('required', 'required');
             if (cpfRequiredLabel) cpfRequiredLabel.style.display = 'inline';
             if (cpfHint) cpfHint.textContent = 'Obrigatório';
         }
-        
+
         // Atualizar campos de endereço (CEP e endereço são obrigatórios)
         if (addressBrazil && addressForeign) {
             if (isForeigner) {
                 // Mostrar endereço estrangeiro, ocultar brasileiro
                 addressBrazil.style.display = 'none';
                 addressForeign.style.display = 'block';
-                
+
                 // Remover required dos campos brasileiros e limpar valores
                 Object.values(brazilAddressFields).forEach(field => {
                     if (field.input) {
@@ -1109,7 +1100,7 @@ if (isForeignerCheckbox) {
                     }
                     if (field.label) field.label.style.display = 'none';
                 });
-                
+
                 // Garantir que campos estrangeiros obrigatórios tenham required
                 const requiredForeignFields = ['foreignStreet', 'foreignNumber', 'foreignCity', 'foreignState', 'foreignZipCode'];
                 requiredForeignFields.forEach(fieldId => {
@@ -1122,7 +1113,7 @@ if (isForeignerCheckbox) {
                 // Mostrar endereço brasileiro, ocultar estrangeiro
                 addressBrazil.style.display = 'block';
                 addressForeign.style.display = 'none';
-                
+
                 // Garantir que campos brasileiros obrigatórios tenham required
                 const requiredBrazilFields = ['cep', 'street', 'number', 'district', 'city', 'state'];
                 requiredBrazilFields.forEach(fieldId => {
@@ -1131,7 +1122,7 @@ if (isForeignerCheckbox) {
                         field.setAttribute('required', 'required');
                     }
                 });
-                
+
                 // Remover required dos campos estrangeiros e limpar
                 Object.values(foreignAddressFields).forEach(field => {
                     if (field) {
@@ -1142,7 +1133,7 @@ if (isForeignerCheckbox) {
             }
         }
     }
-    
+
     isForeignerCheckbox.addEventListener('change', updateForeignerFields);
     // Inicializar estado
     updateForeignerFields();
@@ -1171,7 +1162,7 @@ fileInputs.forEach(input => {
             if (input.id === 'ecnpjCertificate') {
                 allowedTypes = ['.pfx'];
             }
-            
+
             // Validação de tamanho máximo (10MB para upload)
             const validation = validateFile(file, 10, allowedTypes);
             if (!validation.valid) {
@@ -1180,7 +1171,7 @@ fileInputs.forEach(input => {
                 e.target.value = '';
                 return;
             }
-            
+
             // Aviso se arquivo > 10MB (não será enviado por email)
             const MAX_EMAIL_SIZE = 10 * 1024 * 1024; // 10MB
             if (file.size > MAX_EMAIL_SIZE) {
@@ -1200,7 +1191,7 @@ fileInputs.forEach(input => {
                     hint.style.display = 'none';
                 }
             }
-            
+
             e.target.setCustomValidity('');
         }
     });
@@ -1214,25 +1205,25 @@ console.log('🔵 registerForm ID:', registerForm?.id);
 if (registerForm) {
     console.log('✅ Formulário encontrado! ID:', registerForm.id);
     console.log('✅ Adicionando listener de submit ao formulário...');
-    
+
     registerForm.addEventListener('submit', async (e) => {
         console.log('🟢 ========== EVENTO SUBMIT DISPARADO! ==========');
         e.preventDefault();
         console.log('🟢 preventDefault() executado - impedindo comportamento padrão');
-        
+
         // Garantir que campos ocultos não tenham required antes de validar
         updateRequiredFields();
-        
+
         const accountTypeRadio = document.querySelector('input[name="accountType"]:checked');
         if (!accountTypeRadio) {
             console.error('❌ ERRO: Tipo de conta não selecionado!');
             showMessage('Por favor, selecione o tipo de cadastro (PF ou PJ).', 'error');
             return;
         }
-        
+
         const accountType = accountTypeRadio.value;
         console.log('🟢 Tipo de conta selecionado:', accountType);
-        
+
         const submitBtn = registerForm.querySelector('button[type="submit"]');
         if (!submitBtn) {
             console.error('❌ ERRO: Botão de submit não encontrado!');
@@ -1240,7 +1231,7 @@ if (registerForm) {
             return;
         }
         console.log('🟢 Botão de submit encontrado:', submitBtn);
-        
+
         // Validações específicas
         console.log('🟢 Iniciando validações...');
         if (accountType === 'PF') {
@@ -1249,7 +1240,7 @@ if (registerForm) {
             const cpf = document.getElementById('cpf').value.replace(/\D/g, '');
             console.log('🟢 CPF coletado:', cpf ? '***' + cpf.slice(-3) : 'vazio');
             console.log('🟢 É estrangeiro?', isForeigner);
-            
+
             // CPF é obrigatório apenas para brasileiros
             if (!isForeigner) {
                 if (!cpf || cpf.length !== 11) {
@@ -1267,15 +1258,15 @@ if (registerForm) {
                     return;
                 }
             }
-            
+
             const birthDate = document.getElementById('birthDate').value;
             if (!validateAge(birthDate)) {
                 showMessage('Você deve ter pelo menos 18 anos para se cadastrar.', 'error');
                 return;
             }
-            
+
             // Validação de PEP removida - campo opcional
-            
+
             // Validar endereço PF (usar variável isForeigner já declarada acima)
             if (isForeigner) {
                 // Validar endereço estrangeiro
@@ -1284,14 +1275,14 @@ if (registerForm) {
                 const foreignNumber = document.getElementById('foreignNumber')?.value.trim() || '';
                 const foreignCity = document.getElementById('foreignCity')?.value.trim() || '';
                 const foreignState = document.getElementById('foreignState')?.value.trim() || '';
-                
+
                 // ⚠️ VALIDAÇÃO OBRIGATÓRIA DE CEP ESTRANGEIRO
                 if (!foreignZipCode) {
                     showMessage('CEP/Código Postal é obrigatório. Por favor, preencha o CEP.', 'error');
                     document.getElementById('foreignZipCode')?.focus();
                     return;
                 }
-                
+
                 if (!foreignStreet || !foreignNumber || !foreignCity || !foreignState) {
                     showMessage('Por favor, preencha todos os campos obrigatórios do endereço (CEP/Código Postal, Logradouro, Número, Cidade e Estado/Província).', 'error');
                     return;
@@ -1304,14 +1295,14 @@ if (registerForm) {
                 const district = document.getElementById('district')?.value.trim() || '';
                 const city = document.getElementById('city')?.value.trim() || '';
                 const state = document.getElementById('state')?.value.trim() || '';
-                
+
                 // ⚠️ VALIDAÇÃO OBRIGATÓRIA DE CEP BRASILEIRO
                 if (!cep) {
                     showMessage('CEP é obrigatório. Por favor, preencha o CEP.', 'error');
                     document.getElementById('cep')?.focus();
                     return;
                 }
-                
+
                 if (!street || !number || !district || !city || !state) {
                     showMessage('Por favor, preencha todos os campos obrigatórios do endereço (CEP, Logradouro, Número, Bairro, Cidade e UF).', 'error');
                     return;
@@ -1325,13 +1316,13 @@ if (registerForm) {
                 showMessage('CNPJ inválido. Por favor, verifique o número.', 'error');
                 return;
             }
-            
+
             const adminCpf = document.getElementById('majorityAdminCpf').value.replace(/\D/g, '');
             if (!validateCPF(adminCpf)) {
                 showMessage('CPF do administrador inválido. Por favor, verifique o número.', 'error');
                 return;
             }
-            
+
             // Validar endereço PJ
             const pjCep = document.getElementById('pjCep')?.value.trim() || '';
             const pjStreet = document.getElementById('pjStreet')?.value.trim() || '';
@@ -1339,20 +1330,20 @@ if (registerForm) {
             const pjDistrict = document.getElementById('pjDistrict')?.value.trim() || '';
             const pjCity = document.getElementById('pjCity')?.value.trim() || '';
             const pjState = document.getElementById('pjState')?.value.trim() || '';
-            
+
             // ⚠️ VALIDAÇÃO OBRIGATÓRIA DE CEP PJ
             if (!pjCep) {
                 showMessage('CEP é obrigatório. Por favor, preencha o CEP da empresa.', 'error');
                 document.getElementById('pjCep')?.focus();
                 return;
             }
-            
+
             if (!pjStreet || !pjNumber || !pjDistrict || !pjCity || !pjState) {
                 showMessage('Por favor, preencha todos os campos obrigatórios do endereço (CEP, Logradouro, Número, Bairro, Cidade e UF).', 'error');
                 return;
             }
         }
-        
+
         // Validação de documento obrigatório
         if (accountType === 'PF') {
             const documentFront = document.getElementById('documentFront');
@@ -1361,7 +1352,7 @@ if (registerForm) {
                 documentFront?.focus();
                 return;
             }
-            
+
             const documentBack = document.getElementById('documentBack');
             if (!documentBack || !documentBack.files || documentBack.files.length === 0) {
                 showMessage('Por favor, envie a foto do documento (RG/CNH - Verso). Este campo é obrigatório.', 'error');
@@ -1375,7 +1366,7 @@ if (registerForm) {
                 adminIdFront?.focus();
                 return;
             }
-            
+
             const adminIdBack = document.getElementById('adminIdBack');
             if (!adminIdBack || !adminIdBack.files || adminIdBack.files.length === 0) {
                 showMessage('Por favor, envie a foto do documento do administrador (RG/CNH - Verso). Este campo é obrigatório.', 'error');
@@ -1383,30 +1374,30 @@ if (registerForm) {
                 return;
             }
         }
-        
+
         // Show loading message
         console.log('🟢 Todas as validações passaram! Preparando envio...');
         showMessage('Enviando formulário...', 'loading');
-        
+
         // Disable submit button
         submitBtn.disabled = true;
         submitBtn.textContent = 'Enviando...';
         console.log('🟢 Botão desabilitado, iniciando coleta de dados...');
-        
+
         try {
             console.log('📋 ========== COLETANDO DADOS DO FORMULÁRIO ==========');
-            
+
             // Coletar dados do formulário
             let formData = {
                 accountType: accountType
             };
-            
+
             if (accountType === 'PF') {
                 console.log('📋 Coletando dados de PESSOA FÍSICA...');
-                
+
                 const isForeigner = document.getElementById('isForeigner').checked;
                 console.log('📋 É estrangeiro?', isForeigner);
-                
+
                 // Coletar endereço baseado em estrangeiro ou não
                 let address = {};
                 if (isForeigner) {
@@ -1437,7 +1428,7 @@ if (registerForm) {
                     };
                     console.log('📋 Endereço brasileiro coletado:', address);
                 }
-                
+
                 formData = {
                     ...formData,
                     fullName: document.getElementById('fullName').value,
@@ -1452,7 +1443,7 @@ if (registerForm) {
                     pepPosition: document.getElementById('pepPosition').value || '',
                     address: address
                 };
-                
+
                 console.log('📋 Dados PF coletados:', {
                     fullName: formData.fullName,
                     cpf: formData.cpf ? '***' + formData.cpf.slice(-3) : 'vazio',
@@ -1468,7 +1459,7 @@ if (registerForm) {
                 });
             } else {
                 console.log('📋 Coletando dados de PESSOA JURÍDICA...');
-                
+
                 formData = {
                     ...formData,
                     companyName: document.getElementById('companyName').value,
@@ -1495,7 +1486,7 @@ if (registerForm) {
                         phone: document.getElementById('majorityAdminPhone').value
                     }
                 };
-                
+
                 console.log('📋 Dados PJ coletados:', {
                     companyName: formData.companyName,
                     tradeName: formData.tradeName,
@@ -1510,14 +1501,14 @@ if (registerForm) {
                     }
                 });
             }
-            
+
             console.log('✅ Coleta de dados completa! Enviando para backend...');
             console.log('📋 Dados finais coletados:', {
                 accountType: formData.accountType,
                 temEndereco: !!formData.address,
                 cep: formData.address?.cep || formData.address?.zipCode || 'não encontrado'
             });
-            
+
             // Enviar formulário para o backend (Tudo em uma etapa)
             console.log('🚀 Chamando sendFormToBackend()...');
             await sendFormToBackend(formData, accountType, submitBtn);
@@ -1527,9 +1518,9 @@ if (registerForm) {
             console.error('❌ Tipo de erro:', error.name);
             console.error('❌ Mensagem:', error.message);
             console.error('❌ Stack:', error.stack);
-            
+
             showMessage(`Erro ao processar formulário: ${error.message || 'Erro desconhecido'}. Por favor, verifique o console do navegador (F12) para mais detalhes.`, 'error');
-            
+
             // Re-enable submit button
             submitBtn.disabled = false;
             submitBtn.textContent = 'Enviar';
@@ -1573,26 +1564,26 @@ const coinMapping = {
 function updateCryptoItem(item, price, change) {
     const priceElement = item.querySelector('.price-amount');
     const changeElement = item.querySelector('.change-percent');
-    
+
     if (priceElement && price !== null) {
         if (price > 1) {
-            priceElement.textContent = `$${price.toLocaleString('en-US', { 
-                minimumFractionDigits: 2, 
-                maximumFractionDigits: 2 
+            priceElement.textContent = `$${price.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
             })}`;
         } else {
-            priceElement.textContent = `$${price.toLocaleString('en-US', { 
-                minimumFractionDigits: 4, 
-                maximumFractionDigits: 6 
+            priceElement.textContent = `$${price.toLocaleString('en-US', {
+                minimumFractionDigits: 4,
+                maximumFractionDigits: 6
             })}`;
         }
     }
-    
+
     if (changeElement && change !== null) {
         const changeValue = parseFloat(change);
         const sign = changeValue >= 0 ? '+' : '';
         changeElement.textContent = `${sign}${changeValue.toFixed(2)}%`;
-        
+
         // Update class based on change
         changeElement.classList.remove('positive', 'negative', 'neutral');
         if (changeValue > 0) {
@@ -1608,40 +1599,40 @@ function updateCryptoItem(item, price, change) {
 // Fetch prices from CoinGecko API
 async function fetchCryptoPricesFromCoinGecko() {
     const cryptoItems = document.querySelectorAll('.crypto-item[data-coin-id]');
-    
+
     if (cryptoItems.length === 0) return false;
-    
+
     const coinIds = Array.from(cryptoItems)
         .map(item => item.getAttribute('data-coin-id'))
         .filter((value, index, self) => self.indexOf(value) === index);
-    
+
     if (coinIds.length === 0) return false;
-    
+
     try {
         const apiUrl = `https://api.coingecko.com/api/v3/simple/price?ids=${coinIds.join(',')}&vs_currencies=usd&include_24hr_change=true`;
-        
+
         const response = await fetch(apiUrl);
-        
+
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const data = await response.json();
-        
+
         if (!data || Object.keys(data).length === 0) {
             return false;
         }
-        
+
         // Update all crypto items
         cryptoItems.forEach(item => {
             const coinId = item.getAttribute('data-coin-id');
             const coinData = data[coinId];
-            
+
             if (coinData && coinData.usd !== undefined) {
                 updateCryptoItem(item, coinData.usd, coinData.usd_24h_change);
             }
         });
-        
+
         return true;
     } catch (error) {
         // Erro silencioso
@@ -1652,47 +1643,47 @@ async function fetchCryptoPricesFromCoinGecko() {
 // Fetch prices from Binance API (alternative)
 async function fetchCryptoPricesFromBinance() {
     const cryptoItems = document.querySelectorAll('.crypto-item[data-coin-id]');
-    
+
     if (cryptoItems.length === 0) return false;
-    
+
     try {
         const promises = Array.from(cryptoItems).map(async (item) => {
             const coinId = item.getAttribute('data-coin-id');
             const mapping = coinMapping[coinId];
-            
+
             if (!mapping) return null;
-            
+
             // Handle stablecoins (USDT)
             if (coinId === 'tether') {
                 // USDT is pegged to USD, so price is ~1.00
                 return { item, price: 1.00, change: 0.00 };
             }
-            
+
             if (!mapping.binance) return null;
-            
+
             try {
                 const symbol = mapping.binance;
                 const response = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
-                
+
                 if (!response.ok) return null;
-                
+
                 const data = await response.json();
-                
+
                 if (data && data.lastPrice) {
                     const price = parseFloat(data.lastPrice);
                     const change = parseFloat(data.priceChangePercent);
-                    
+
                     return { item, price, change };
                 }
             } catch (error) {
                 // Erro silencioso
             }
-            
+
             return null;
         });
-        
+
         const results = await Promise.all(promises);
-        
+
         let updated = false;
         results.forEach(result => {
             if (result) {
@@ -1700,7 +1691,7 @@ async function fetchCryptoPricesFromBinance() {
                 updated = true;
             }
         });
-        
+
         return updated;
     } catch (error) {
         // Erro silencioso
@@ -1711,19 +1702,19 @@ async function fetchCryptoPricesFromBinance() {
 // Main function to fetch crypto prices
 async function fetchCryptoPrices() {
     const cryptoItems = document.querySelectorAll('.crypto-item[data-coin-id]');
-    
+
     if (cryptoItems.length === 0) {
         return;
     }
-    
+
     // Try CoinGecko first
     let success = await fetchCryptoPricesFromCoinGecko();
-    
+
     // If CoinGecko fails, try Binance
     if (!success) {
         success = await fetchCryptoPricesFromBinance();
     }
-    
+
     if (!success) {
         // Show error in UI
         cryptoItems.forEach(item => {

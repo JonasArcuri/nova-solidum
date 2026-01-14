@@ -39,7 +39,7 @@ function safeLogger(level, message, error = null) {
 }
 
 // Configuração CORS - Allowlist ESTRITA por segurança (NUNCA usar *)
-const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS 
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim()).filter(o => o && o !== '*')
     : ['https://www.novasolidumfinance.com.br', 'https://novasolidumfinance.com.br'];
 
@@ -52,25 +52,25 @@ if (ALLOWED_ORIGINS.includes('*') || ALLOWED_ORIGINS.length === 0) {
 // Middleware CORS customizado com allowlist ESTRITA
 app.use((req, res, next) => {
     const origin = req.headers.origin;
-    
+
     // Verificar se origin está na allowlist - NUNCA permitir wildcard
     if (origin && ALLOWED_ORIGINS.includes(origin)) {
         res.setHeader('Access-Control-Allow-Origin', origin);
         res.setHeader('Vary', 'Origin');
     }
     // Se origin não está na lista, NÃO definir Access-Control-Allow-Origin (bloqueia a requisição)
-    
+
     // Headers permitidos - mínimo necessário
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-auth-token');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Max-Age', '86400'); // Cache preflight por 24h
-    
+
     // Responder a preflight requests
     if (req.method === 'OPTIONS') {
         return res.sendStatus(200);
     }
-    
+
     next();
 });
 
@@ -82,20 +82,20 @@ app.use((req, res, next) => {
     res.setHeader('X-XSS-Protection', '1; mode=block');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), payment=(), usb=()');
-    
+
     // Content-Security-Policy para o backend (APIs)
     res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none';");
-    
+
     // Prevenir cache de dados sensíveis
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
-    
+
     // HSTS apenas em produção (HTTPS)
     if (process.env.NODE_ENV === 'production' || req.secure || req.headers['x-forwarded-proto'] === 'https') {
         res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
     }
-    
+
     next();
 });
 
@@ -117,7 +117,7 @@ function validateCPF(cpf) {
     cpf = cpf.replace(/[^\d]/g, '');
     if (cpf.length !== 11) return false;
     if (/^(\d)\1{10}$/.test(cpf)) return false; // Todos os dígitos iguais
-    
+
     let sum = 0;
     for (let i = 0; i < 9; i++) {
         sum += parseInt(cpf.charAt(i)) * (10 - i);
@@ -125,7 +125,7 @@ function validateCPF(cpf) {
     let digit = 11 - (sum % 11);
     if (digit >= 10) digit = 0;
     if (digit !== parseInt(cpf.charAt(9))) return false;
-    
+
     sum = 0;
     for (let i = 0; i < 10; i++) {
         sum += parseInt(cpf.charAt(i)) * (11 - i);
@@ -133,7 +133,7 @@ function validateCPF(cpf) {
     digit = 11 - (sum % 11);
     if (digit >= 10) digit = 0;
     if (digit !== parseInt(cpf.charAt(10))) return false;
-    
+
     return true;
 }
 
@@ -142,20 +142,20 @@ function validateCNPJ(cnpj) {
     cnpj = cnpj.replace(/[^\d]/g, '');
     if (cnpj.length !== 14) return false;
     if (/^(\d)\1{13}$/.test(cnpj)) return false; // Todos os dígitos iguais
-    
+
     let length = cnpj.length - 2;
     let numbers = cnpj.substring(0, length);
     const digits = cnpj.substring(length);
     let sum = 0;
     let pos = length - 7;
-    
+
     for (let i = length; i >= 1; i--) {
         sum += numbers.charAt(length - i) * pos--;
         if (pos < 2) pos = 9;
     }
     let result = sum % 11 < 2 ? 0 : 11 - sum % 11;
     if (result !== parseInt(digits.charAt(0))) return false;
-    
+
     length = length + 1;
     numbers = cnpj.substring(0, length);
     sum = 0;
@@ -166,7 +166,7 @@ function validateCNPJ(cnpj) {
     }
     result = sum % 11 < 2 ? 0 : 11 - sum % 11;
     if (result !== parseInt(digits.charAt(1))) return false;
-    
+
     return true;
 }
 
@@ -174,12 +174,12 @@ function validateEmail(email) {
     if (!email) return false;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) return false;
-    
+
     // Validar domínio básico
     const domain = email.split('@')[1];
     if (!domain || domain.length < 4) return false;
     if (!domain.includes('.')) return false;
-    
+
     return true;
 }
 
@@ -187,7 +187,7 @@ function validatePhone(phone) {
     if (!phone) return false;
     const phoneRegex = /^[\d\s\(\)\-\+]+$/;
     if (!phoneRegex.test(phone)) return false;
-    
+
     // Remover caracteres não numéricos
     const digits = phone.replace(/\D/g, '');
     // Telefone brasileiro: 
@@ -226,29 +226,29 @@ function validateStringLength(str, maxLength, fieldName) {
 // Função para validar e sanitizar dados do formulário
 function validateAndSanitizeFormData(formData, accountType) {
     const errors = [];
-    
+
     if (accountType === 'PF') {
         // Validar campos obrigatórios (verificar se existem e não são strings vazias)
-        if (!formData.fullName || formData.fullName.trim() === '' || 
-            !formData.email || formData.email.trim() === '' || 
+        if (!formData.fullName || formData.fullName.trim() === '' ||
+            !formData.email || formData.email.trim() === '' ||
             !formData.phone || formData.phone.trim() === '') {
             return { valid: false, errors: ['Campos obrigatórios faltando'] };
         }
-        
+
         // Validar tamanhos
         const nameCheck = validateStringLength(formData.fullName, 200, 'Nome');
         if (!nameCheck.valid) errors.push(nameCheck.error);
-        
+
         // Validar email
         if (!validateEmail(formData.email)) {
             errors.push('Email inválido');
         }
-        
+
         // Validar telefone
         if (!validatePhone(formData.phone)) {
             errors.push('Telefone inválido');
         }
-        
+
         // Validar CPF se fornecido
         if (formData.cpf) {
             const cpfClean = formData.cpf.replace(/\D/g, '');
@@ -256,11 +256,11 @@ function validateAndSanitizeFormData(formData, accountType) {
                 errors.push('CPF inválido');
             }
         }
-        
+
         // Validar endereço PF
         const address = formData.address || {};
         const isForeigner = formData.isForeigner === true || formData.isForeigner === 'true' || address.isForeign === true;
-        
+
         if (isForeigner) {
             // Validar endereço estrangeiro
             const foreignZipCode = formData.foreignZipCode || address.zipCode || '';
@@ -268,7 +268,7 @@ function validateAndSanitizeFormData(formData, accountType) {
             const foreignNumber = formData.foreignNumber || address.number || '';
             const foreignCity = formData.foreignCity || address.city || '';
             const foreignState = formData.foreignState || address.state || '';
-            
+
             if (!foreignZipCode || foreignZipCode.trim() === '' ||
                 !foreignStreet || foreignStreet.trim() === '' ||
                 !foreignNumber || foreignNumber.trim() === '' ||
@@ -284,7 +284,7 @@ function validateAndSanitizeFormData(formData, accountType) {
             const district = formData.district || address.district || '';
             const city = formData.city || address.city || '';
             const state = formData.state || address.state || '';
-            
+
             if (!cep || cep.trim() === '' ||
                 !street || street.trim() === '' ||
                 !number || number.trim() === '' ||
@@ -294,42 +294,42 @@ function validateAndSanitizeFormData(formData, accountType) {
                 errors.push('Por favor, preencha todos os campos obrigatórios do endereço (CEP, Logradouro, Número, Bairro, Cidade e UF)');
             }
         }
-        
+
         // Sanitizar strings
         formData.fullName = escapeHtml(formData.fullName);
         formData.email = escapeHtml(formData.email);
         if (formData.rg) formData.rg = escapeHtml(formData.rg);
         if (formData.cnh) formData.cnh = escapeHtml(formData.cnh);
-        
+
     } else if (accountType === 'PJ') {
         // Validar campos obrigatórios (verificar se existem e não são strings vazias)
-        if (!formData.companyName || formData.companyName.trim() === '' || 
-            !formData.companyEmail || formData.companyEmail.trim() === '' || 
-            !formData.companyPhone || formData.companyPhone.trim() === '' || 
+        if (!formData.companyName || formData.companyName.trim() === '' ||
+            !formData.companyEmail || formData.companyEmail.trim() === '' ||
+            !formData.companyPhone || formData.companyPhone.trim() === '' ||
             !formData.cnpj || formData.cnpj.trim() === '') {
             return { valid: false, errors: ['Campos obrigatórios faltando'] };
         }
-        
+
         // Validar tamanhos
         const companyNameCheck = validateStringLength(formData.companyName, 200, 'Razão Social');
         if (!companyNameCheck.valid) errors.push(companyNameCheck.error);
-        
+
         // Validar email
         if (!validateEmail(formData.companyEmail)) {
             errors.push('Email da empresa inválido');
         }
-        
+
         // Validar telefone
         if (!validatePhone(formData.companyPhone)) {
             errors.push('Telefone da empresa inválido');
         }
-        
+
         // Validar CNPJ
         const cnpjClean = formData.cnpj.replace(/\D/g, '');
         if (!validateCNPJ(cnpjClean)) {
             errors.push('CNPJ inválido');
         }
-        
+
         // Validar CPF do administrador
         if (formData.majorityAdmin && formData.majorityAdmin.cpf) {
             const adminCpfClean = formData.majorityAdmin.cpf.replace(/\D/g, '');
@@ -337,7 +337,7 @@ function validateAndSanitizeFormData(formData, accountType) {
                 errors.push('CPF do administrador inválido');
             }
         }
-        
+
         // Validar endereço PJ
         const address = formData.address || {};
         const pjCep = formData.pjCep || address.cep || '';
@@ -346,7 +346,7 @@ function validateAndSanitizeFormData(formData, accountType) {
         const pjDistrict = formData.pjDistrict || address.district || '';
         const pjCity = formData.pjCity || address.city || '';
         const pjState = formData.pjState || address.state || '';
-        
+
         if (!pjCep || pjCep.trim() === '' ||
             !pjStreet || pjStreet.trim() === '' ||
             !pjNumber || pjNumber.trim() === '' ||
@@ -355,7 +355,7 @@ function validateAndSanitizeFormData(formData, accountType) {
             !pjState || pjState.trim() === '') {
             errors.push('Por favor, preencha todos os campos obrigatórios do endereço (CEP, Logradouro, Número, Bairro, Cidade e UF)');
         }
-        
+
         // Sanitizar strings
         formData.companyName = escapeHtml(formData.companyName);
         formData.companyEmail = escapeHtml(formData.companyEmail);
@@ -369,11 +369,11 @@ function validateAndSanitizeFormData(formData, accountType) {
             }
         }
     }
-    
+
     if (errors.length > 0) {
         return { valid: false, errors };
     }
-    
+
     return { valid: true, sanitizedData: formData };
 }
 
@@ -383,23 +383,23 @@ const registrationTokens = new Map();
 // Middleware para verificar token de autenticação
 function verifyToken(req, res, next) {
     const token = req.headers['x-auth-token'] || req.body.token || req.query.token;
-    
+
     if (!token) {
         return res.status(401).json({ error: 'Token de autenticação não fornecido' });
     }
-    
+
     if (!registrationTokens.has(token)) {
         return res.status(401).json({ error: 'Token inválido ou expirado' });
     }
-    
+
     const tokenData = registrationTokens.get(token);
-    
+
     // Verificar se token expirou (24 horas)
     if (Date.now() > tokenData.expiresAt) {
         registrationTokens.delete(token);
         return res.status(401).json({ error: 'Token expirado' });
     }
-    
+
     req.tokenData = tokenData;
     next();
 }
@@ -427,7 +427,7 @@ const uploadMultiple = multer({
             'image/jpg',
             'application/pdf'
         ];
-        
+
         if (allowedMimeTypes.includes(file.mimetype)) {
             cb(null, true);
         } else {
@@ -439,17 +439,17 @@ const uploadMultiple = multer({
 // Função para validar magic bytes (assinatura de arquivo)
 function validateFileMagicBytes(buffer, mimetype) {
     if (!buffer || buffer.length < 4) return false;
-    
+
     const magicNumbers = {
         'image/jpeg': [[0xFF, 0xD8, 0xFF]],
         'image/jpg': [[0xFF, 0xD8, 0xFF]],
         'image/png': [[0x89, 0x50, 0x4E, 0x47]],
         'application/pdf': [[0x25, 0x50, 0x44, 0x46]]
     };
-    
+
     const signatures = magicNumbers[mimetype];
     if (!signatures) return false;
-    
+
     return signatures.some(sig => {
         for (let i = 0; i < sig.length; i++) {
             if (buffer[i] !== sig[i]) return false;
@@ -470,7 +470,7 @@ if (process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASS) 
             pass: process.env.EMAIL_PASS
         }
     });
-    
+
     // Verificar conexão
     transporter.verify((error, success) => {
         if (error) {
@@ -490,8 +490,8 @@ app.get('/health', (req, res) => {
 
 // Rota GET para testar se o servidor está funcionando
 app.get('/', (req, res) => {
-    res.json({ 
-        status: 'ok', 
+    res.json({
+        status: 'ok',
         service: 'Tinify Proxy Backend',
         message: 'Servidor está rodando!',
         endpoints: {
@@ -503,7 +503,7 @@ app.get('/', (req, res) => {
 
 // Rota GET para o endpoint de compressão (apenas informativa)
 app.get('/api/tinify/compress', (req, res) => {
-    res.status(405).json({ 
+    res.status(405).json({
         error: 'Method Not Allowed',
         message: 'Este endpoint aceita apenas requisições POST',
         usage: 'Use POST /api/tinify/compress com FormData contendo o campo "image"'
@@ -515,7 +515,7 @@ app.post('/api/register/initial', emailRateLimiter, async (req, res) => {
     try {
         // Verificar se email está configurado
         if (!transporter) {
-            return res.status(500).json({ 
+            return res.status(500).json({
                 error: 'Servidor de email não configurado',
                 message: 'Configure EMAIL_HOST, EMAIL_USER e EMAIL_PASS no arquivo .env'
             });
@@ -523,12 +523,12 @@ app.post('/api/register/initial', emailRateLimiter, async (req, res) => {
 
         const formData = req.body;
         const accountType = formData.accountType || 'PF';
-        
+
         // Validar e sanitizar dados
         const validation = validateAndSanitizeFormData(formData, accountType);
         if (!validation.valid) {
             safeLogger('warn', 'Validação falhou no registro inicial', { errors: validation.errors });
-            return res.status(400).json({ 
+            return res.status(400).json({
                 error: 'Dados inválidos',
                 message: validation.errors.join(', ')
             });
@@ -537,7 +537,7 @@ app.post('/api/register/initial', emailRateLimiter, async (req, res) => {
         // Gerar token único
         const token = crypto.randomBytes(32).toString('hex');
         const expiresAt = Date.now() + (24 * 60 * 60 * 1000); // 24 horas
-        
+
         // Armazenar token com dados (sem criptografia por enquanto - pode adicionar depois)
         registrationTokens.set(token, {
             formData,
@@ -633,32 +633,32 @@ app.post('/api/register/initial', emailRateLimiter, async (req, res) => {
 app.get('/api/register/verify/:token', (req, res) => {
     try {
         const token = req.params.token;
-        
+
         if (!token || !registrationTokens.has(token)) {
-            return res.status(401).json({ 
+            return res.status(401).json({
                 error: 'Token inválido',
-                valid: false 
+                valid: false
             });
         }
-        
+
         const tokenData = registrationTokens.get(token);
-        
+
         // Verificar se token expirou
         if (Date.now() > tokenData.expiresAt) {
             registrationTokens.delete(token);
-            return res.status(401).json({ 
+            return res.status(401).json({
                 error: 'Token expirado',
-                valid: false 
+                valid: false
             });
         }
-        
+
         // Retornar apenas informações não sensíveis
         res.json({
             valid: true,
             accountType: tokenData.accountType,
             expiresAt: tokenData.expiresAt
         });
-        
+
     } catch (error) {
         res.status(500).json({
             error: 'Erro ao verificar token',
@@ -683,7 +683,7 @@ app.post('/api/register/documents', verifyToken, uploadMultiple.fields([
     try {
         // Verificar se email está configurado
         if (!transporter) {
-            return res.status(500).json({ 
+            return res.status(500).json({
                 error: 'Servidor de email não configurado',
                 message: 'Configure EMAIL_HOST, EMAIL_USER e EMAIL_PASS no arquivo .env'
             });
@@ -693,13 +693,13 @@ app.post('/api/register/documents', verifyToken, uploadMultiple.fields([
         const tokenData = req.tokenData;
         const formData = tokenData.formData;
         const accountType = tokenData.accountType;
-        
+
         // Preparar anexos
         const attachments = [];
         const fileFields = accountType === 'PF'
             ? ['documentFront', 'documentBack', 'selfie', 'proofOfAddress']
             : ['articlesOfAssociation', 'cnpjCard', 'adminIdFront', 'adminIdBack', 'companyProofOfAddress', 'ecnpjCertificate'];
-        
+
         fileFields.forEach(fieldId => {
             const file = req.files && req.files[fieldId] ? req.files[fieldId][0] : null;
             if (file) {
@@ -713,7 +713,7 @@ app.post('/api/register/documents', verifyToken, uploadMultiple.fields([
                     // Não adiciona arquivo suspeito
                     return;
                 }
-                
+
                 attachments.push({
                     filename: file.originalname,
                     content: file.buffer,
@@ -726,10 +726,10 @@ app.post('/api/register/documents', verifyToken, uploadMultiple.fields([
         const companyEmail = process.env.COMPANY_EMAIL || 'novasolidum@gmail.com';
         const userEmail = accountType === 'PF' ? formData.email : formData.companyEmail;
         const userName = accountType === 'PF' ? formData.fullName : formData.companyName;
-        
+
         // Construir corpo do email em HTML
         let emailHtml = buildEmailHTML(formData, accountType, attachments.length);
-        
+
         // Enviar email para a empresa
         const mailOptions = {
             from: `"Nova Solidum Formulário" <${process.env.EMAIL_USER}>`,
@@ -799,7 +799,7 @@ app.post('/api/email/send', emailRateLimiter, uploadMultiple.fields([
     try {
         // Verificar se email está configurado
         if (!transporter) {
-            return res.status(500).json({ 
+            return res.status(500).json({
                 error: 'Servidor de email não configurado',
                 message: 'Configure EMAIL_HOST, EMAIL_USER e EMAIL_PASS no arquivo .env'
             });
@@ -811,42 +811,42 @@ app.post('/api/email/send', emailRateLimiter, uploadMultiple.fields([
             formData = JSON.parse(req.body.formData || '{}');
         } catch (error) {
             safeLogger('error', 'Erro ao parsear formData', error);
-            return res.status(400).json({ 
+            return res.status(400).json({
                 error: 'Dados inválidos',
                 message: 'Formato de dados incorreto'
             });
         }
-        
+
         const accountType = formData.accountType || 'PF';
-        
+
         // Verificar honeypot (anti-bot)
         if (req.body.honeypot && req.body.honeypot.length > 0) {
             safeLogger('warn', 'Honeypot detectado - possível bot');
-            return res.status(400).json({ 
+            return res.status(400).json({
                 error: 'Requisição inválida',
                 message: 'Por favor, tente novamente'
             });
         }
-        
+
         // Validar e sanitizar dados
         const validation = validateAndSanitizeFormData(formData, accountType);
         if (!validation.valid) {
             safeLogger('warn', 'Validação falhou', { errors: validation.errors });
-            return res.status(400).json({ 
+            return res.status(400).json({
                 error: 'Dados inválidos',
                 message: validation.errors.join(', ')
             });
         }
-        
+
         // Usar dados sanitizados
         formData = validation.sanitizedData;
-        
+
         // Preparar anexos
         const attachments = [];
         const fileFields = accountType === 'PF'
             ? ['documentFront', 'documentBack', 'selfie', 'proofOfAddress']
             : ['articlesOfAssociation', 'cnpjCard', 'adminIdFront', 'adminIdBack', 'companyProofOfAddress', 'ecnpjCertificate'];
-        
+
         fileFields.forEach(fieldId => {
             const file = req.files && req.files[fieldId] ? req.files[fieldId][0] : null;
             if (file) {
@@ -860,7 +860,7 @@ app.post('/api/email/send', emailRateLimiter, uploadMultiple.fields([
                     // Não adiciona arquivo suspeito
                     return;
                 }
-                
+
                 attachments.push({
                     filename: file.originalname,
                     content: file.buffer,
@@ -873,10 +873,10 @@ app.post('/api/email/send', emailRateLimiter, uploadMultiple.fields([
         const companyEmail = process.env.COMPANY_EMAIL || 'novasolidum@gmail.com';
         const userEmail = accountType === 'PF' ? formData.email : formData.companyEmail;
         const userName = accountType === 'PF' ? formData.fullName : formData.companyName;
-        
+
         // Construir corpo do email em HTML
         let emailHtml = buildEmailHTML(formData, accountType, attachments.length);
-        
+
         // Enviar email para a empresa
         const mailOptions = {
             from: `"Nova Solidum Formulário" <${process.env.EMAIL_USER}>`,
@@ -915,7 +915,7 @@ app.post('/api/email/send', emailRateLimiter, uploadMultiple.fields([
         };
 
         await transporter.sendMail(userMailOptions);
-        
+
         // Log de sucesso com contexto
         safeLogger('log', 'Email enviado com sucesso', {
             accountType,
@@ -938,7 +938,7 @@ app.post('/api/email/send', emailRateLimiter, uploadMultiple.fields([
             error: error.message,
             stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined
         });
-        
+
         // Resposta genérica para não expor detalhes internos
         res.status(500).json({
             error: 'Erro ao enviar email',
@@ -988,11 +988,17 @@ function buildEmailHTML(formData, accountType, attachmentsCount) {
     if (accountType === 'PF') {
         if (formData.fullName) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Nome:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(formData.fullName)}</span></td></tr>`;
         if (formData.cpf) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">CPF:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(formData.cpf)}</span></td></tr>`;
+        if (formData.birthDate) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Data de Nasc.:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(formData.birthDate)}</span></td></tr>`;
         if (formData.email) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Email:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(formData.email)}</span></td></tr>`;
         if (formData.phone) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Telefone:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(formData.phone)}</span></td></tr>`;
+        if (formData.pepStatus) {
+            html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">PEP:</span><span style="color: #dc2626; font-size: 14px; font-weight: bold;">SIM</span></td></tr>`;
+            if (formData.pepPosition) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Cargo PEP:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(formData.pepPosition)}</span></td></tr>`;
+        }
     } else {
         if (formData.companyName) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Razão Social:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(formData.companyName)}</span></td></tr>`;
         if (formData.cnpj) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">CNPJ:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(formData.cnpj)}</span></td></tr>`;
+        if (formData.foundationDate) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Data Fundação:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(formData.foundationDate)}</span></td></tr>`;
         if (formData.companyEmail) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Email:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(formData.companyEmail)}</span></td></tr>`;
         if (formData.companyPhone) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Telefone:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(formData.companyPhone)}</span></td></tr>`;
     }
@@ -1007,11 +1013,11 @@ function buildEmailHTML(formData, accountType, attachmentsCount) {
     // Adicionar endereço baseado no tipo
     // Suportar tanto campos diretos quanto dentro do objeto 'address'
     const address = formData.address || {};
-    
+
     if (accountType === 'PF') {
         // Verificar se é estrangeiro ou brasileiro
         const isForeigner = formData.isForeigner === true || formData.isForeigner === 'true' || address.isForeign === true;
-        
+
         if (isForeigner) {
             // Endereço para estrangeiros (campos diretos ou dentro de address)
             const street = formData.foreignStreet || address.street || '';
@@ -1022,7 +1028,7 @@ function buildEmailHTML(formData, accountType, attachmentsCount) {
             const state = formData.foreignState || address.state || '';
             const zipCode = formData.foreignZipCode || address.zipCode || '';
             const country = formData.foreignCountry || address.country || '';
-            
+
             if (street) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Logradouro:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(street)}</span></td></tr>`;
             if (number) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Número:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(number)}</span></td></tr>`;
             if (complement) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Complemento:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(complement)}</span></td></tr>`;
@@ -1040,8 +1046,8 @@ function buildEmailHTML(formData, accountType, attachmentsCount) {
             const district = formData.district || address.district || '';
             const city = formData.city || address.city || '';
             const state = formData.state || address.state || '';
-            
-            html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">CEP:</span><span style="color: #1a2744; font-size: 14px;">${cep ? escapeHtml(cep) : '<span style="color: #dc2626;">⚠️ Não informado</span>'}</span></td></tr>`;
+
+            html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">CEP:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(cep || 'Não informado')}</span></td></tr>`;
             if (street) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Logradouro:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(street)}</span></td></tr>`;
             if (number) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Número:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(number)}</span></td></tr>`;
             if (complement) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Complemento:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(complement)}</span></td></tr>`;
@@ -1058,8 +1064,8 @@ function buildEmailHTML(formData, accountType, attachmentsCount) {
         const district = formData.pjDistrict || address.district || '';
         const city = formData.pjCity || address.city || '';
         const state = formData.pjState || address.state || '';
-        
-        if (cep) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">CEP:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(cep)}</span></td></tr>`;
+
+        html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">CEP:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(cep || 'Não informado')}</span></td></tr>`;
         if (street) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Logradouro:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(street)}</span></td></tr>`;
         if (number) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Número:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(number)}</span></td></tr>`;
         if (complement) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Complemento:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(complement)}</span></td></tr>`;
@@ -1194,7 +1200,7 @@ app.post('/api/tinify/compress', upload.single('image'), async (req, res) => {
 
     } catch (error) {
         safeLogger('error', 'Erro ao comprimir imagem', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Erro interno do servidor',
             message: 'Ocorreu um erro ao processar a imagem. Tente novamente mais tarde.'
         });
@@ -1211,11 +1217,11 @@ if (process.env.VERCEL !== '1' && !process.env.VERCEL_ENV) {
         safeLogger('log', `Health check: http://localhost:${PORT}/health`);
         safeLogger('log', `Tinify: http://localhost:${PORT}/api/tinify/compress`);
         safeLogger('log', `Email: http://localhost:${PORT}/api/email/send`);
-        
+
         if (!process.env.TINIFY_API_KEY) {
             safeLogger('warn', 'TINIFY_API_KEY não configurada! Configure no arquivo .env');
         }
-        
+
         if (!transporter) {
             safeLogger('warn', 'Servidor de email não configurado! Configure EMAIL_HOST, EMAIL_USER e EMAIL_PASS no .env');
         }
