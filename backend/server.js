@@ -819,6 +819,16 @@ app.post('/api/email/send', emailRateLimiter, uploadMultiple.fields([
 
         const accountType = formData.accountType || 'PF';
 
+        // 🔍 DEBUG: Log detalhado dos dados recebidos para verificar CEP
+        safeLogger('log', '📋 Dados do formulário recebidos:', {
+            accountType: formData.accountType,
+            hasAddress: !!formData.address,
+            address: formData.address,
+            directCep: formData.cep,
+            directPjCep: formData.pjCep,
+            isForeigner: formData.isForeigner
+        });
+
         // Verificar honeypot (anti-bot)
         if (req.body.honeypot && req.body.honeypot.length > 0) {
             safeLogger('warn', 'Honeypot detectado - possível bot');
@@ -1046,6 +1056,14 @@ function buildEmailHTML(formData, accountType, attachmentsCount) {
             const district = formData.district || address.district || '';
             const city = formData.city || address.city || '';
             const state = formData.state || address.state || '';
+
+            // 🔍 DEBUG: Log para verificar extração do CEP
+            console.log('📋 DEBUG buildEmailHTML - Endereço PF brasileiro:', {
+                'formData.cep': formData.cep,
+                'address.cep': address.cep,
+                'cepFinal': cep,
+                'addressObjeto': JSON.stringify(address)
+            });
 
             html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">CEP:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(cep || 'Não informado')}</span></td></tr>`;
             if (street) html += `<tr><td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #6b7280; font-size: 14px; font-weight: 600; display: inline-block; width: 180px;">Logradouro:</span><span style="color: #1a2744; font-size: 14px;">${escapeHtml(street)}</span></td></tr>`;
