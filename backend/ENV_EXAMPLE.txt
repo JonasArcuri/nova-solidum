@@ -3,8 +3,8 @@ PORT=3000
 FRONTEND_URL=http://localhost:5500
 
 # CORS - Origens permitidas (separadas por vírgula)
-# PRODUÇÃO: https://www.novasolidumfinance.com.br,https://novasolidumfinance.com.br
-ALLOWED_ORIGINS=https://www.novasolidumfinance.com.br,https://novasolidumfinance.com.br
+# PRODUÇÃO: https://www.novasolidumfinance.com.br,https://novasolidumfinance.com.br,https://nova-solidum.vercel.app
+ALLOWED_ORIGINS=https://www.novasolidumfinance.com.br,https://novasolidumfinance.com.br,https://nova-solidum.vercel.app
 
 # Configuração do Tinify (opcional)
 TINIFY_API_KEY=sua_api_key_do_tinify_aqui

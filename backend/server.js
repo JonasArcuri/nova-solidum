@@ -98,7 +98,11 @@ async function requireAdmin(req, res, next) {
 // Configuração CORS - Allowlist ESTRITA por segurança (NUNCA usar *)
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim()).filter(o => o && o !== '*')
-    : ['https://www.novasolidumfinance.com.br', 'https://novasolidumfinance.com.br'];
+    : [
+        'https://www.novasolidumfinance.com.br',
+        'https://novasolidumfinance.com.br',
+        'https://nova-solidum.vercel.app'
+    ];
 
 // Validar que não há wildcard na configuração
 if (ALLOWED_ORIGINS.includes('*') || ALLOWED_ORIGINS.length === 0) {
