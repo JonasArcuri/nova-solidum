@@ -2099,6 +2099,8 @@ body {
     
     .header-buttons {
         gap: 0.5rem;
+        flex-wrap: wrap;
+        justify-content: center;
     }
     
     .btn-secondary,
@@ -2436,6 +2438,15 @@ body {
         padding: 0.875rem 2rem;
         font-size: 1rem;
     }
+
+    .footer {
+        padding: var(--spacing-md) 0 var(--spacing-lg);
+    }
+
+    .footer-text {
+        font-size: 0.85rem;
+        line-height: 1.6;
+    }
     
     .cta-box {
         padding: var(--spacing-sm);
@@ -2671,6 +2682,20 @@ body {
         min-height: 44px;
         display: flex;
         align-items: center;
+    }
+
+    .footer-content {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .footer-text {
+        text-align: center;
+        word-break: break-word;
+    }
+
+    .footer-logo {
+        padding-top: 1rem;
     }
     
     .mobile-menu-toggle {
