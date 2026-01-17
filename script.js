@@ -131,6 +131,7 @@ function initModalButtons() {
     setTimeout(() => {
         // Selecionar APENAS botões .btn-primary que NÃO estão dentro do formulário
         const allButtons = document.querySelectorAll('.btn-primary');
+        const explicitModalButtons = Array.from(document.querySelectorAll('[data-open-modal="true"]'));
 
         // Debug de cada botão
         console.log(`🔵 Total de botões .btn-primary encontrados: ${allButtons.length}`);
@@ -144,13 +145,13 @@ function initModalButtons() {
             });
         });
 
-        const buttons = Array.from(allButtons).filter(button => {
+        const fallbackButtons = Array.from(allButtons).filter(button => {
             const isInsideForm = button.closest('.register-form') || button.closest('form');
             const hasNoModal = button.classList.contains('no-modal');
             // Apenas excluir se for submit E estiver dentro de um form
             const isFormSubmitButton = isInsideForm && button.type === 'submit';
 
-            console.log(`  📋 Analisando "${button.textContent.trim()}":`, {
+            console.log(`  �Y"< Analisando "${button.textContent.trim()}":`, {
                 isInsideForm: !!isInsideForm,
                 hasNoModal,
                 type: button.type,
@@ -160,6 +161,8 @@ function initModalButtons() {
 
             return !isInsideForm && !hasNoModal;
         });
+
+        const buttons = explicitModalButtons.length > 0 ? explicitModalButtons : fallbackButtons;
 
         console.log(`🔵 Botões que abrirão o modal: ${buttons.length}`);
         console.log(`🔵 Botões excluídos: ${allButtons.length - buttons.length}`);
@@ -1673,16 +1676,34 @@ if (registerForm) {
     }, 1000);
 }
 
-// Crypto Price API Integration
-// Coin mapping for different APIs
+// Crypto Price API Integration (Binance WebSocket)
+// Coin mapping for Binance symbols
 const coinMapping = {
-    'bitcoin': { coingecko: 'bitcoin', binance: 'BTCUSDT', price: 1.0 },
-    'ethereum': { coingecko: 'ethereum', binance: 'ETHUSDT', price: 1.0 },
-    'solana': { coingecko: 'solana', binance: 'SOLUSDT', price: 1.0 },
-    'binancecoin': { coingecko: 'binancecoin', binance: 'BNBUSDT', price: 1.0 },
-    'tether': { coingecko: 'tether', binance: null, price: 1.0 }, // USDT is stablecoin
-    'usd-coin': { coingecko: 'usd-coin', binance: 'USDCUSDT', price: 1.0 }
+    'bitcoin': { binance: 'BTCUSDT', price: 1.0 },
+    'ethereum': { binance: 'ETHUSDT', price: 1.0 },
+    'solana': { binance: 'SOLUSDT', price: 1.0 },
+    'binancecoin': { binance: 'BNBUSDT', price: 1.0 },
+    'tether': { binance: null, price: 1.0 }, // USDT is stablecoin
+    'usd-coin': { binance: 'USDCUSDT', price: 1.0 }
 };
+
+const binanceSymbolToCoinId = {};
+Object.keys(coinMapping).forEach((coinId) => {
+    const symbol = coinMapping[coinId].binance;
+    if (symbol) {
+        binanceSymbolToCoinId[symbol.toUpperCase()] = coinId;
+    }
+});
+
+function setStablecoinDefaults() {
+    const cryptoItems = document.querySelectorAll('.crypto-item[data-coin-id]');
+    cryptoItems.forEach(item => {
+        const coinId = item.getAttribute('data-coin-id');
+        if (coinId === 'tether') {
+            updateCryptoItem(item, 1.0, 0.0);
+        }
+    });
+}
 
 // Function to update UI with price data
 function updateCryptoItem(item, price, change) {
@@ -1720,51 +1741,71 @@ function updateCryptoItem(item, price, change) {
     }
 }
 
-// Fetch prices from CoinGecko API
-async function fetchCryptoPricesFromCoinGecko() {
-    const cryptoItems = document.querySelectorAll('.crypto-item[data-coin-id]');
+function handleBinanceTicker(symbol, price, openPrice) {
+    const coinId = binanceSymbolToCoinId[symbol.toUpperCase()];
+    if (!coinId) return;
 
-    if (cryptoItems.length === 0) return false;
+    const cryptoItem = document.querySelector(`.crypto-item[data-coin-id="${coinId}"]`);
+    if (!cryptoItem) return;
 
-    const coinIds = Array.from(cryptoItems)
-        .map(item => item.getAttribute('data-coin-id'))
-        .filter((value, index, self) => self.indexOf(value) === index);
+    const open = parseFloat(openPrice);
+    const current = parseFloat(price);
+    const change = open ? ((current - open) / open) * 100 : 0;
 
-    if (coinIds.length === 0) return false;
-
-    try {
-        const apiUrl = `https://api.coingecko.com/api/v3/simple/price?ids=${coinIds.join(',')}&vs_currencies=usd&include_24hr_change=true`;
-
-        const response = await fetch(apiUrl);
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        if (!data || Object.keys(data).length === 0) {
-            return false;
-        }
-
-        // Update all crypto items
-        cryptoItems.forEach(item => {
-            const coinId = item.getAttribute('data-coin-id');
-            const coinData = data[coinId];
-
-            if (coinData && coinData.usd !== undefined) {
-                updateCryptoItem(item, coinData.usd, coinData.usd_24h_change);
-            }
-        });
-
-        return true;
-    } catch (error) {
-        // Erro silencioso
-        return false;
-    }
+    updateCryptoItem(cryptoItem, current, change);
 }
 
-// Fetch prices from Binance API (alternative)
+function initBinanceStream() {
+    if (!window.WebSocket) return false;
+
+    const symbols = Object.values(coinMapping)
+        .map(mapping => mapping.binance)
+        .filter(Boolean)
+        .map(symbol => symbol.toLowerCase());
+
+    if (symbols.length === 0) return false;
+
+    const streams = symbols.map(symbol => `${symbol}@miniticker`).join('/');
+    const wsUrl = `wss://stream.binance.com:9443/stream?streams=${streams}`;
+
+    let ws;
+    let reconnectAttempts = 0;
+
+    const connect = () => {
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+            reconnectAttempts = 0;
+        };
+
+        ws.onmessage = (event) => {
+            try {
+                const payload = JSON.parse(event.data);
+                const data = payload.data;
+                if (!data || !data.s) return;
+                handleBinanceTicker(data.s, data.c, data.o);
+            } catch (error) {
+                // Silent
+            }
+        };
+
+        ws.onerror = () => {
+            // Silent
+        };
+
+        ws.onclose = () => {
+            if (reconnectAttempts < 5) {
+                reconnectAttempts += 1;
+                setTimeout(connect, 1500 * reconnectAttempts);
+            }
+        };
+    };
+
+    connect();
+    return true;
+}
+
+// Fetch prices from Binance REST API (fallback)
 async function fetchCryptoPricesFromBinance() {
     const cryptoItems = document.querySelectorAll('.crypto-item[data-coin-id]');
 
@@ -1779,7 +1820,6 @@ async function fetchCryptoPricesFromBinance() {
 
             // Handle stablecoins (USDT)
             if (coinId === 'tether') {
-                // USDT is pegged to USD, so price is ~1.00
                 return { item, price: 1.00, change: 0.00 };
             }
 
@@ -1800,7 +1840,7 @@ async function fetchCryptoPricesFromBinance() {
                     return { item, price, change };
                 }
             } catch (error) {
-                // Erro silencioso
+                // Silent
             }
 
             return null;
@@ -1818,43 +1858,20 @@ async function fetchCryptoPricesFromBinance() {
 
         return updated;
     } catch (error) {
-        // Erro silencioso
+        // Silent
         return false;
     }
 }
 
-// Main function to fetch crypto prices
-async function fetchCryptoPrices() {
-    const cryptoItems = document.querySelectorAll('.crypto-item[data-coin-id]');
-
-    if (cryptoItems.length === 0) {
-        return;
-    }
-
-    // Try CoinGecko first
-    let success = await fetchCryptoPricesFromCoinGecko();
-
-    // If CoinGecko fails, try Binance
-    if (!success) {
-        success = await fetchCryptoPricesFromBinance();
-    }
-
-    if (!success) {
-        // Show error in UI
-        cryptoItems.forEach(item => {
-            const priceElement = item.querySelector('.price-amount');
-            if (priceElement && priceElement.textContent === '--') {
-                priceElement.textContent = 'Erro';
-            }
-        });
-    }
-}
-
-// Function to initialize crypto prices
+// Initialize crypto prices
 function initCryptoPrices() {
     // Wait a bit to ensure DOM is ready
     setTimeout(() => {
-        fetchCryptoPrices();
+        setStablecoinDefaults();
+        const started = initBinanceStream();
+        if (!started) {
+            fetchCryptoPricesFromBinance();
+        }
     }, 500);
 }
 
@@ -1865,9 +1882,8 @@ if (document.readyState === 'loading') {
     initCryptoPrices();
 }
 
-// Update prices every 30 seconds
-setInterval(fetchCryptoPrices, 30000);
-
+// Backup refresh every 60 seconds
+setInterval(fetchCryptoPricesFromBinance, 60000);
 // Add CSS for fade-in animation
 const style = document.createElement('style');
 style.textContent = `

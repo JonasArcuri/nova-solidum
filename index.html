@@ -11,7 +11,7 @@
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
         font-src 'self' https://fonts.gstatic.com;
         img-src 'self' data: https: blob:;
-        connect-src 'self' https://back-end-nova.vercel.app https://api.coingecko.com https://api.binance.com https://viacep.com.br https://*.tradingview.com wss://*.tradingview.com;
+        connect-src 'self' https://back-end-nova.vercel.app https://api.coingecko.com https://api.binance.com https://viacep.com.br https://*.tradingview.com wss://*.tradingview.com wss://stream.binance.com:9443;
         frame-src https://*.tradingview.com;
         frame-ancestors 'none';
         worker-src 'self' blob:;
@@ -53,7 +53,7 @@
                 <div class="header-buttons">
                     <a href="https://nova-solidum-conversor.vercel.app/" target="_blank" rel="noopener noreferrer"
                         class="btn-secondary">Cotação</a>
-                    <button class="btn-primary">Começar</button>
+                    <button class="btn-primary" data-open-modal="true">Começar</button>
                 </div>
                 <button class="mobile-menu-toggle" aria-label="Menu">
                     <span></span>
@@ -241,7 +241,7 @@
                 <p class="cta-description">Faça o onboarding ou crie uma conta para comprar e vender ativos digitais
                     (criptoativos).</p>
                 <div class="cta-buttons">
-                    <button class="btn-primary">Entrar / Cadastrar</button>
+                    <button class="btn-primary" data-open-modal="true">Entrar / Cadastrar</button>
                 </div>
             </div>
 
@@ -474,7 +474,7 @@
             <!-- CTA Final -->
             <div class="final-cta">
                 <h3 class="final-cta-title">Junte-se à Nova Solidum Finances.</h3>
-                <button class="btn-primary btn-large">Começar</button>
+                <button class="btn-primary btn-large" data-open-modal="true">Começar</button>
             </div>
         </div>
     </section>
