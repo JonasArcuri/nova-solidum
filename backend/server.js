@@ -119,7 +119,7 @@ app.use((req, res, next) => {
 
     // Headers permitidos - mínimo necessário
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-auth-token, Authorization');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-auth-token, Authorization, authorization');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Max-Age', '86400'); // Cache preflight por 24h
 
