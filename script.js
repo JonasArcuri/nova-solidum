@@ -1803,85 +1803,21 @@ function initBinanceStream() {
     return true;
 }
 
-// Fetch prices from Binance REST API (fallback)
-async function fetchCryptoPricesFromBinance() {
-    const cryptoItems = document.querySelectorAll('.crypto-item[data-coin-id]');
-
-    if (cryptoItems.length === 0) return false;
-
-    try {
-        const promises = Array.from(cryptoItems).map(async (item) => {
-            const coinId = item.getAttribute('data-coin-id');
-            const mapping = coinMapping[coinId];
-
-            if (!mapping) return null;
-
-            // Handle stablecoins (USDT)
-            if (coinId === 'tether') {
-                return { item, price: 1.00, change: 0.00 };
-            }
-
-            if (!mapping.binance) return null;
-
-            try {
-                const symbol = mapping.binance;
-                const response = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
-
-                if (!response.ok) return null;
-
-                const data = await response.json();
-
-                if (data && data.lastPrice) {
-                    const price = parseFloat(data.lastPrice);
-                    const change = parseFloat(data.priceChangePercent);
-
-                    return { item, price, change };
-                }
-            } catch (error) {
-                // Silent
-            }
-
-            return null;
-        });
-
-        const results = await Promise.all(promises);
-
-        let updated = false;
-        results.forEach(result => {
-            if (result) {
-                updateCryptoItem(result.item, result.price, result.change);
-                updated = true;
-            }
-        });
-
-        return updated;
-    } catch (error) {
-        // Silent
-        return false;
-    }
-}
-
 // Initialize crypto prices
 function initCryptoPrices() {
     // Wait a bit to ensure DOM is ready
     setTimeout(() => {
         setStablecoinDefaults();
-        const started = initBinanceStream();
-        if (!started) {
-            fetchCryptoPricesFromBinance();
-        }
+        initBinanceStream();
     }, 500);
 }
 
-// Fetch prices on page load
+// Fetch prices on page load// Fetch prices on page load
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initCryptoPrices);
 } else {
     initCryptoPrices();
 }
-
-// Backup refresh every 60 seconds
-setInterval(fetchCryptoPricesFromBinance, 60000);
 // Add CSS for fade-in animation
 const style = document.createElement('style');
 style.textContent = `
