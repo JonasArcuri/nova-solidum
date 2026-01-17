@@ -7,10 +7,16 @@ const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const fs = require('fs');
 const path = require('path');
+const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabase = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+    ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } })
+    : null;
 
 // Função para sanitizar logs e remover dados sensíveis
 function safeLogger(level, message, error = null) {
@@ -40,6 +46,55 @@ function safeLogger(level, message, error = null) {
     }
 }
 
+function ensureSupabaseConfigured(res) {
+    if (!supabase) {
+        res.status(500).json({
+            error: 'Supabase nao configurado',
+            message: 'Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no .env'
+        });
+        return false;
+    }
+    return true;
+}
+
+async function requireAdmin(req, res, next) {
+    try {
+        if (!ensureSupabaseConfigured(res)) return;
+        const authHeader = req.headers.authorization || '';
+        const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+        if (!token) {
+            return res.status(401).json({ error: 'Token de autenticacao ausente' });
+        }
+
+        const { data: userData, error: userError } = await supabase.auth.getUser(token);
+        if (userError || !userData || !userData.user) {
+            return res.status(401).json({ error: 'Token invalido' });
+        }
+
+        const { data: adminRow, error: adminError } = await supabase
+            .from('admin_users')
+            .select('email')
+            .eq('email', userData.user.email)
+            .maybeSingle();
+
+        if (adminError) {
+            safeLogger('error', 'Erro ao validar admin', adminError);
+            return res.status(500).json({ error: 'Falha ao validar permissao' });
+        }
+
+        if (!adminRow) {
+            return res.status(403).json({ error: 'Sem permissao' });
+        }
+
+        req.adminUser = userData.user;
+        next();
+    } catch (error) {
+        safeLogger('error', 'Erro ao validar admin', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+}
+
 // Configuração CORS - Allowlist ESTRITA por segurança (NUNCA usar *)
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim()).filter(o => o && o !== '*')
@@ -64,7 +119,7 @@ app.use((req, res, next) => {
 
     // Headers permitidos - mínimo necessário
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-auth-token');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-auth-token, Authorization');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Max-Age', '86400'); // Cache preflight por 24h
 
@@ -395,11 +450,13 @@ function getSubmissionRecord(submissionId) {
     return record;
 }
 
-function rememberSubmission(submissionId, messageId, attachmentsCount) {
+function rememberSubmission(submissionId, messageId, attachmentsCount, registrationId, protocolNumber) {
     if (!submissionId) return;
     recentSubmissions.set(submissionId, {
         messageId,
         attachmentsCount,
+        registrationId: registrationId || null,
+        protocolNumber: protocolNumber || null,
         createdAt: Date.now()
     });
 }
@@ -423,6 +480,44 @@ function persistRegistration(formData, accountType, submissionId, attachments) {
     } catch (error) {
         safeLogger('warn', 'Falha ao salvar registro local', error);
     }
+}
+
+function sanitizeFilename(filename) {
+    if (!filename) return 'file';
+    const cleaned = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    return cleaned.slice(0, 120);
+}
+
+function generateProtocolNumber() {
+    const year = new Date().getFullYear();
+    const rand = crypto.randomInt(0, 1000000).toString().padStart(6, '0');
+    return `NS-${year}-${rand}`;
+}
+
+function buildRegistrationSummary(record) {
+    const payload = record.payload || {};
+    const isPF = record.type === 'PF';
+    const address = payload.address || {};
+    const name = isPF ? payload.fullName : payload.companyName;
+    const cpfCnpj = isPF ? payload.cpf : payload.cnpj;
+    const email = isPF ? payload.email : payload.companyEmail;
+    const phone = isPF ? payload.phone : payload.companyPhone;
+    const city = isPF ? (payload.city || address.city || payload.foreignCity) : (payload.pjCity || address.city);
+    const state = isPF ? (payload.state || address.state || payload.foreignState) : (payload.pjState || address.state);
+
+    return {
+        id: record.id,
+        protocol_number: record.protocol_number || null,
+        type: record.type,
+        status: record.status,
+        created_at: record.created_at,
+        name: name || '',
+        cpf_cnpj: cpfCnpj || '',
+        email: email || '',
+        phone: phone || '',
+        city: city || '',
+        state: state || ''
+    };
 }
 
 // Middleware para verificar token de autenticação
@@ -558,6 +653,268 @@ app.get('/api/tinify/compress', (req, res) => {
         message: 'Este endpoint aceita apenas requisições POST',
         usage: 'Use POST /api/tinify/compress com FormData contendo o campo "image"'
     });
+});
+
+// Rota para criar cadastro e salvar no Supabase
+app.post('/api/registrations/create', emailRateLimiter, uploadMultiple.fields([
+    { name: 'documentFront', maxCount: 1 },
+    { name: 'documentBack', maxCount: 1 },
+    { name: 'selfie', maxCount: 1 },
+    { name: 'proofOfAddress', maxCount: 1 },
+    { name: 'articlesOfAssociation', maxCount: 1 },
+    { name: 'cnpjCard', maxCount: 1 },
+    { name: 'adminIdFront', maxCount: 1 },
+    { name: 'adminIdBack', maxCount: 1 },
+    { name: 'companyProofOfAddress', maxCount: 1 },
+    { name: 'ecnpjCertificate', maxCount: 1 }
+]), async (req, res) => {
+    try {
+        if (!ensureSupabaseConfigured(res)) return;
+
+        let formData;
+        try {
+            formData = JSON.parse(req.body.formData || '{}');
+        } catch (error) {
+            safeLogger('error', 'Erro ao parsear formData', error);
+            return res.status(400).json({
+                error: 'Dados invalidos',
+                message: 'Formato de dados incorreto'
+            });
+        }
+
+        const accountType = formData.accountType || 'PF';
+
+        if (req.body.honeypot && req.body.honeypot.length > 0) {
+            safeLogger('warn', 'Honeypot detectado - possivel bot');
+            return res.status(400).json({
+                error: 'Requisicao invalida',
+                message: 'Por favor, tente novamente'
+            });
+        }
+
+        const validation = validateAndSanitizeFormData(formData, accountType);
+        if (!validation.valid) {
+            safeLogger('warn', 'Validacao falhou', { errors: validation.errors });
+            return res.status(400).json({
+                error: 'Dados invalidos',
+                message: validation.errors.join(', ')
+            });
+        }
+
+        formData = validation.sanitizedData;
+
+        const submissionId = formData.submissionId;
+        const existingSubmission = getSubmissionRecord(submissionId);
+        if (existingSubmission) {
+            return res.json({
+                success: true,
+                message: 'Envio ja recebido anteriormente.',
+                duplicate: true,
+                attachmentsCount: existingSubmission.attachmentsCount || 0,
+                registration_id: existingSubmission.registrationId || null,
+                protocol_number: existingSubmission.protocolNumber || null
+            });
+        }
+
+        const requiredDocs = accountType === 'PF'
+            ? ['documentFront', 'documentBack']
+            : ['adminIdFront', 'adminIdBack'];
+
+        const missingDocs = requiredDocs.filter(fieldId => !req.files || !req.files[fieldId] || req.files[fieldId].length === 0);
+        if (missingDocs.length > 0) {
+            return res.status(400).json({
+                error: 'Documentos obrigatorios',
+                message: 'Por favor, anexe todos os documentos obrigatorios',
+                field: missingDocs[0],
+                fields: missingDocs
+            });
+        }
+
+        const protocolNumber = generateProtocolNumber();
+        const { data: createdRegistration, error: insertError } = await supabase
+            .from('registrations')
+            .insert({
+                type: accountType,
+                payload: formData,
+                status: 'NOVO',
+                protocol_number: protocolNumber
+            })
+            .select('id, protocol_number')
+            .single();
+
+        if (insertError) {
+            safeLogger('error', 'Erro ao salvar cadastro', insertError);
+            return res.status(500).json({
+                error: 'Falha ao salvar cadastro',
+                message: 'Nao foi possivel salvar o cadastro'
+            });
+        }
+
+        const fileTypeMap = {
+            documentFront: 'RG_FRENTE',
+            documentBack: 'RG_VERSO',
+            selfie: 'SELFIE',
+            proofOfAddress: 'COMPROVANTE_ENDERECO',
+            articlesOfAssociation: 'CONTRATO_SOCIAL',
+            cnpjCard: 'CARTAO_CNPJ',
+            adminIdFront: 'ADMIN_RG_FRENTE',
+            adminIdBack: 'ADMIN_RG_VERSO',
+            companyProofOfAddress: 'COMPROVANTE_ENDERECO_EMPRESA',
+            ecnpjCertificate: 'CERTIFICADO_ECNPJ'
+        };
+
+        const fileFields = accountType === 'PF'
+            ? ['documentFront', 'documentBack', 'selfie', 'proofOfAddress']
+            : ['articlesOfAssociation', 'cnpjCard', 'adminIdFront', 'adminIdBack', 'companyProofOfAddress', 'ecnpjCertificate'];
+
+        const attachments = [];
+        const uploadedPaths = [];
+
+        for (const fieldId of fileFields) {
+            const file = req.files && req.files[fieldId] ? req.files[fieldId][0] : null;
+            if (!file) continue;
+
+            if (!validateFileMagicBytes(file.buffer, file.mimetype, fieldId)) {
+                safeLogger('warn', 'Arquivo com magic bytes invalido rejeitado', {
+                    fieldId,
+                    mimetype: file.mimetype,
+                    size: file.size
+                });
+                return res.status(400).json({
+                    error: 'Arquivo invalido',
+                    message: 'Arquivo rejeitado por seguranca',
+                    field: fieldId
+                });
+            }
+
+            const fileType = fileTypeMap[fieldId] || fieldId;
+            const storagePath = `${createdRegistration.id}/${fileType}/${Date.now()}-${sanitizeFilename(file.originalname)}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('registration-files')
+                .upload(storagePath, file.buffer, {
+                    contentType: file.mimetype,
+                    upsert: false
+                });
+
+            if (uploadError) {
+                safeLogger('error', 'Erro ao subir arquivo', uploadError);
+                if (uploadedPaths.length > 0) {
+                    await supabase.storage.from('registration-files').remove(uploadedPaths);
+                }
+                return res.status(500).json({
+                    error: 'Falha ao salvar arquivos',
+                    message: 'Nao foi possivel salvar os documentos'
+                });
+            }
+
+            uploadedPaths.push(storagePath);
+
+            const { error: fileInsertError } = await supabase
+                .from('registration_files')
+                .insert({
+                    registration_id: createdRegistration.id,
+                    file_type: fileType,
+                    storage_path: storagePath,
+                    metadata: {
+                        mime_type: file.mimetype,
+                        size: file.size,
+                        original_name: file.originalname
+                    }
+                });
+
+            if (fileInsertError) {
+                safeLogger('error', 'Erro ao registrar arquivo', fileInsertError);
+                if (uploadedPaths.length > 0) {
+                    await supabase.storage.from('registration-files').remove(uploadedPaths);
+                }
+                return res.status(500).json({
+                    error: 'Falha ao registrar arquivos',
+                    message: 'Nao foi possivel registrar os documentos'
+                });
+            }
+
+            attachments.push({
+                filename: file.originalname,
+                content: file.buffer,
+                contentType: file.mimetype
+            });
+        }
+
+        const attachmentNames = attachments.map(att => att.filename);
+        persistRegistration(formData, accountType, submissionId, attachmentNames);
+
+        let emailSent = false;
+        let messageId = null;
+
+        if (transporter) {
+            try {
+                const companyEmail = process.env.COMPANY_EMAIL || 'novasolidum@gmail.com';
+                const userEmail = accountType === 'PF' ? formData.email : formData.companyEmail;
+                const userName = accountType === 'PF' ? formData.fullName : formData.companyName;
+
+                const emailHtml = buildEmailHTML(formData, accountType, attachments.length);
+                const mailOptions = {
+                    from: `"Nova Solidum Formulario" <${process.env.EMAIL_USER}>`,
+                    to: companyEmail,
+                    replyTo: userEmail,
+                    subject: `Novo Registro ${accountType} - Nova Solidum Finances`,
+                    html: emailHtml,
+                    attachments: attachments
+                };
+
+                const info = await transporter.sendMail(mailOptions);
+                messageId = info && info.messageId ? info.messageId : null;
+
+                const userConfirmationHtml = `
+                    <!DOCTYPE html>
+                    <html lang="pt-BR">
+                    <head><meta charset="UTF-8"></head>
+                    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                            <h2 style="color: #1a2744;">Documentos Recebidos - Nova Solidum Finances</h2>
+                            <p>Ola ${userName},</p>
+                            <p>Recebemos seus documentos com sucesso! Nossa equipe entrara em contato em breve para finalizar seu cadastro.</p>
+                            <p>Atenciosamente,<br><strong>Equipe Nova Solidum Finances</strong></p>
+                        </div>
+                    </body>
+                    </html>
+                `;
+
+                await transporter.sendMail({
+                    from: `"Nova Solidum Finances" <${process.env.EMAIL_USER}>`,
+                    to: userEmail,
+                    subject: 'Documentos Recebidos - Nova Solidum Finances',
+                    html: userConfirmationHtml
+                });
+
+                emailSent = true;
+            } catch (emailError) {
+                safeLogger('error', 'Falha ao enviar email do cadastro', emailError);
+            }
+        } else {
+            safeLogger('warn', 'Email nao configurado - cadastro salvo sem envio');
+        }
+
+        rememberSubmission(submissionId, messageId, attachments.length, createdRegistration.id, createdRegistration.protocol_number || protocolNumber);
+
+        return res.json({
+            success: true,
+            message: emailSent
+                ? 'Cadastro enviado com sucesso! Verifique seu email para confirmacao.'
+                : 'Cadastro recebido com sucesso. O email pode demorar a chegar.',
+            attachmentsCount: attachments.length,
+            registration_id: createdRegistration.id,
+            protocol_number: createdRegistration.protocol_number || protocolNumber,
+            emailSent: emailSent
+        });
+    } catch (error) {
+        safeLogger('error', 'Erro ao criar cadastro', error);
+        res.status(500).json({
+            error: 'Erro ao processar cadastro',
+            message: 'Ocorreu um erro ao processar sua solicitacao. Tente novamente mais tarde.'
+        });
+    }
 });
 
 // Rota para cadastro inicial (ETAPA 1) - sem documentos
@@ -834,6 +1191,7 @@ app.post('/api/register/documents', verifyToken, uploadMultiple.fields([
         };
 
         await transporter.sendMail(userMailOptions);
+        rememberSubmission(submissionId, emailResult ? emailResult.messageId : null, attachments.length, null, null);
 
         res.json({
             success: true,
@@ -883,7 +1241,7 @@ app.post('/api/email/send', emailRateLimiter, uploadMultiple.fields([
             });
         }
 
-        const accountType = formData.accountType || 'PF';\n\n        }
+        const accountType = formData.accountType || 'PF';
 
         // Verificar honeypot (anti-bot)
         if (req.body.honeypot && req.body.honeypot.length > 0) {
@@ -1009,7 +1367,7 @@ app.post('/api/email/send', emailRateLimiter, uploadMultiple.fields([
             html: userConfirmationHtml
         };
 
-        await transporter.sendMail(userMailOptions);\n\n        }
+        await transporter.sendMail(userMailOptions);
         // Log de sucesso com contexto
         safeLogger('log', 'Email enviado com sucesso', {
             accountType,
@@ -1307,6 +1665,177 @@ app.post('/api/tinify/compress', upload.single('image'), async (req, res) => {
             error: 'Erro interno do servidor',
             message: 'Ocorreu um erro ao processar a imagem. Tente novamente mais tarde.'
         });
+    }
+});
+
+// Rotas Admin (protegidas)
+app.get('/api/admin/me', requireAdmin, (req, res) => {
+    res.json({
+        ok: true,
+        email: req.adminUser.email
+    });
+});
+
+app.get('/api/admin/registrations', requireAdmin, async (req, res) => {
+    try {
+        if (!ensureSupabaseConfigured(res)) return;
+
+        const page = Math.max(parseInt(req.query.page || '1', 10), 1);
+        const pageSize = Math.min(Math.max(parseInt(req.query.pageSize || '20', 10), 1), 100);
+        const type = req.query.type || '';
+        const status = req.query.status || '';
+        const query = (req.query.query || '').toString().trim().toLowerCase();
+        const from = req.query.from || '';
+        const to = req.query.to || '';
+
+        let supaQuery = supabase
+            .from('registrations')
+            .select('id, type, status, created_at, payload, protocol_number')
+            .order('created_at', { ascending: false });
+
+        if (type) supaQuery = supaQuery.eq('type', type);
+        if (status) supaQuery = supaQuery.eq('status', status);
+        if (from) supaQuery = supaQuery.gte('created_at', new Date(from).toISOString());
+        if (to) {
+            const toDate = new Date(to);
+            toDate.setHours(23, 59, 59, 999);
+            supaQuery = supaQuery.lte('created_at', toDate.toISOString());
+        }
+
+        const { data, error } = await supaQuery;
+        if (error) {
+            safeLogger('error', 'Erro ao listar cadastros', error);
+            return res.status(500).json({ error: 'Falha ao carregar cadastros' });
+        }
+
+        let filtered = data || [];
+        if (query) {
+            filtered = filtered.filter(record => {
+                const payload = record.payload || {};
+                const haystack = [
+                    payload.fullName,
+                    payload.companyName,
+                    payload.cpf,
+                    payload.cnpj,
+                    payload.email,
+                    payload.companyEmail,
+                    payload.phone,
+                    payload.companyPhone
+                ]
+                    .filter(Boolean)
+                    .join(' ')
+                    .toLowerCase();
+                return haystack.includes(query);
+            });
+        }
+
+        const total = filtered.length;
+        const start = (page - 1) * pageSize;
+        const items = filtered.slice(start, start + pageSize).map(buildRegistrationSummary);
+
+        res.json({
+            page,
+            pageSize,
+            total,
+            items
+        });
+    } catch (error) {
+        safeLogger('error', 'Erro ao listar cadastros', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+app.get('/api/admin/registrations/:id', requireAdmin, async (req, res) => {
+    try {
+        if (!ensureSupabaseConfigured(res)) return;
+        const registrationId = req.params.id;
+
+        const { data: registration, error: regError } = await supabase
+            .from('registrations')
+            .select('*')
+            .eq('id', registrationId)
+            .maybeSingle();
+
+        if (regError) {
+            safeLogger('error', 'Erro ao buscar cadastro', regError);
+            return res.status(500).json({ error: 'Falha ao carregar cadastro' });
+        }
+
+        if (!registration) {
+            return res.status(404).json({ error: 'Cadastro nao encontrado' });
+        }
+
+        const { data: files, error: filesError } = await supabase
+            .from('registration_files')
+            .select('*')
+            .eq('registration_id', registrationId)
+            .order('created_at', { ascending: true });
+
+        if (filesError) {
+            safeLogger('error', 'Erro ao buscar arquivos do cadastro', filesError);
+            return res.status(500).json({ error: 'Falha ao carregar documentos' });
+        }
+
+        const enrichedFiles = [];
+        for (const file of files || []) {
+            const { data: signedData, error: signedError } = await supabase.storage
+                .from('registration-files')
+                .createSignedUrl(file.storage_path, 60 * 10);
+
+            if (signedError) {
+                safeLogger('warn', 'Erro ao assinar URL', signedError);
+            }
+
+            enrichedFiles.push({
+                id: file.id,
+                file_type: file.file_type,
+                storage_path: file.storage_path,
+                metadata: file.metadata,
+                created_at: file.created_at,
+                signed_url: signedData ? signedData.signedUrl : null
+            });
+        }
+
+        res.json({
+            registration,
+            files: enrichedFiles
+        });
+    } catch (error) {
+        safeLogger('error', 'Erro ao carregar cadastro', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+app.patch('/api/admin/registrations/:id/status', requireAdmin, async (req, res) => {
+    try {
+        if (!ensureSupabaseConfigured(res)) return;
+        const registrationId = req.params.id;
+        const status = req.body.status;
+
+        const allowedStatuses = ['NOVO', 'EM_ANALISE', 'APROVADO', 'REPROVADO'];
+        if (!allowedStatuses.includes(status)) {
+            return res.status(400).json({ error: 'Status invalido' });
+        }
+
+        const { data, error } = await supabase
+            .from('registrations')
+            .update({ status })
+            .eq('id', registrationId)
+            .select('id, status')
+            .maybeSingle();
+
+        if (error) {
+            safeLogger('error', 'Erro ao atualizar status', error);
+            return res.status(500).json({ error: 'Falha ao atualizar status' });
+        }
+
+        res.json({
+            ok: true,
+            registration: data
+        });
+    } catch (error) {
+        safeLogger('error', 'Erro ao atualizar status', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
 

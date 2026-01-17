@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Nova Solidum</title>
+    <link rel="stylesheet" href="/admin/admin.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="admin-shell">
+        <aside class="admin-nav">
+            <div class="brand">Nova Solidum</div>
+            <nav>
+                <a href="/admin" data-route>Dashboard</a>
+                <a href="/admin/logout" data-route>Sair</a>
+            </nav>
+            <div class="admin-user" id="adminUser"></div>
+        </aside>
+        <main class="admin-main">
+            <section id="view-login" class="view hidden">
+                <div class="card auth-card">
+                    <h1>Admin Login</h1>
+                    <p class="muted">Acesso exclusivo do administrador.</p>
+                    <form id="loginForm">
+                        <label>Email</label>
+                        <input type="email" id="loginEmail" required placeholder="admin@empresa.com">
+                        <label>Senha</label>
+                        <input type="password" id="loginPassword" required placeholder="********">
+                        <button type="submit" class="btn-primary">Entrar</button>
+                        <div class="message" id="loginMessage"></div>
+                    </form>
+                </div>
+            </section>
+
+            <section id="view-dashboard" class="view hidden">
+                <div class="header-row">
+                    <h1>Cadastros</h1>
+                    <div class="filters">
+                        <select id="filterType">
+                            <option value="">Tipo</option>
+                            <option value="PF">PF</option>
+                            <option value="PJ">PJ</option>
+                        </select>
+                        <select id="filterStatus">
+                            <option value="">Status</option>
+                            <option value="NOVO">NOVO</option>
+                            <option value="EM_ANALISE">EM_ANALISE</option>
+                            <option value="APROVADO">APROVADO</option>
+                            <option value="REPROVADO">REPROVADO</option>
+                        </select>
+                        <input type="date" id="filterFrom" />
+                        <input type="date" id="filterTo" />
+                        <input type="text" id="filterQuery" placeholder="Busca por nome, CPF/CNPJ, email" />
+                        <button id="applyFilters" class="btn-secondary">Filtrar</button>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table class="table" id="registrationsTable">
+                        <thead>
+                            <tr>
+                                <th>Tipo</th>
+                                <th>Nome/Razao Social</th>
+                                <th>CPF/CNPJ</th>
+                                <th>Email</th>
+                                <th>Telefone</th>
+                                <th>Cidade/UF</th>
+                                <th>Status</th>
+                                <th>Data</th>
+                                <th>Acoes</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="pagination">
+                    <button id="prevPage" class="btn-secondary">Anterior</button>
+                    <span id="pageInfo"></span>
+                    <button id="nextPage" class="btn-secondary">Proxima</button>
+                </div>
+            </section>
+
+            <section id="view-detail" class="view hidden">
+                <div class="detail-header">
+                    <button class="btn-secondary" id="backToList">Voltar</button>
+                    <div class="detail-actions">
+                        <select id="statusSelect">
+                            <option value="NOVO">NOVO</option>
+                            <option value="EM_ANALISE">EM_ANALISE</option>
+                            <option value="APROVADO">APROVADO</option>
+                            <option value="REPROVADO">REPROVADO</option>
+                        </select>
+                        <button class="btn-primary" id="updateStatus">Atualizar status</button>
+                    </div>
+                </div>
+                <div class="detail-grid" id="detailContent"></div>
+                <div class="documents" id="documentsList"></div>
+            </section>
+        </main>
+    </div>
+
+    <script type="module" src="/admin/admin.js"></script>
+</body>
+</html>

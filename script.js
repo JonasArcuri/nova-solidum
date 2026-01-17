@@ -237,7 +237,7 @@ document.addEventListener('keydown', (e) => {
 // Configuração segura do backend - URLs construídas dinamicamente para evitar exposição direta
 const BACKEND_CONFIG = (() => {
     const _p = ['back-end-nova', 'vercel', 'app'];
-    const _e = '/api/email/send';
+    const _e = '/api/registrations/create';
     const _t = '/api/tinify/compress';
     return {
         get url() { return `https://${_p.join('.')}${_e}`; },
@@ -473,7 +473,10 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
         console.log('✅ Anexos enviados:', result.attachmentsCount || filesCount);
 
         // Show success message
-        showMessage(`Formulário enviado com sucesso! ${result.attachmentsCount || filesCount} anexo(s) enviado(s). Verifique seu email para confirmação. Entraremos em contato em breve.`, 'success');
+        const successMessage = result.emailSent === false
+            ? `Cadastro recebido com sucesso! ${result.attachmentsCount || filesCount} anexo(s) enviado(s). O email pode demorar a chegar, mas seus dados ja foram registrados.`
+            : `Formulario enviado com sucesso! ${result.attachmentsCount || filesCount} anexo(s) enviado(s). Verifique seu email para confirmacao. Entraremos em contato em breve.`;
+        showMessage(successMessage, 'success');
         console.log('✅ ========== ENVIO CONCLUÍDO COM SUCESSO ==========');
 
         // Reset form after 3 seconds
