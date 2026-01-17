@@ -1674,7 +1674,7 @@ if (registerForm) {
     }, 1000);
 }
 
-// Crypto Price API Integration (Binance WebSocket)
+// Crypto Price API Integration (Binance WebSocket only)
 // Coin mapping for Binance symbols
 const coinMapping = {
     'bitcoin': { binance: 'BTCUSDT', price: 1.0 },
@@ -1743,25 +1743,25 @@ function handleBinanceTicker(symbol, price, openPrice) {
     const coinId = binanceSymbolToCoinId[symbol.toUpperCase()];
     if (!coinId) return;
 
-    const cryptoItem = document.querySelector(`.crypto-item[data-coin-id="${coinId}"]`);
-    if (!cryptoItem) return;
+    const cryptoItems = document.querySelectorAll(`.crypto-item[data-coin-id="${coinId}"]`);
+    if (!cryptoItems || cryptoItems.length === 0) return;
 
     const open = parseFloat(openPrice);
     const current = parseFloat(price);
     const change = open ? ((current - open) / open) * 100 : 0;
 
-    updateCryptoItem(cryptoItem, current, change);
+    cryptoItems.forEach(item => updateCryptoItem(item, current, change));
 }
 
 function initBinanceStream() {
-    if (!window.WebSocket) return false;
+    if (!window.WebSocket) return;
 
     const symbols = Object.values(coinMapping)
         .map(mapping => mapping.binance)
         .filter(Boolean)
         .map(symbol => symbol.toLowerCase());
 
-    if (symbols.length === 0) return false;
+    if (symbols.length === 0) return;
 
     const streams = symbols.map(symbol => `${symbol}@miniticker`).join('/');
     const wsUrl = `wss://stream.binance.com:9443/stream?streams=${streams}`;
@@ -1800,7 +1800,6 @@ function initBinanceStream() {
     };
 
     connect();
-    return true;
 }
 
 // Initialize crypto prices
@@ -1812,7 +1811,7 @@ function initCryptoPrices() {
     }, 500);
 }
 
-// Fetch prices on page load// Fetch prices on page load
+// Fetch prices on page load
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initCryptoPrices);
 } else {
