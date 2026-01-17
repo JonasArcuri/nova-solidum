@@ -13,6 +13,7 @@ if (mobileMenuToggle) {
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', function (e) {
         e.preventDefault();
+        clearAllFieldErrors();
         const target = document.querySelector(this.getAttribute('href'));
         if (target) {
             const headerOffset = 80;
@@ -116,7 +117,8 @@ function closeModal() {
         registerModal.classList.remove('show');
         document.body.style.overflow = '';
         registerForm.reset();
-        formMessage.classList.remove('show', 'success', 'error', 'loading');
+        clearAllFieldErrors();
+        formMessage.classList.remove('show', 'success', 'error', 'loading', 'warning');
         formMessage.textContent = '';
     }
 }
@@ -240,8 +242,113 @@ const BACKEND_CONFIG = (() => {
     };
 })();
 
+const SUBMISSION_CONFIG = {
+    timeoutMs: 25000,
+    maxRetries: 2,
+    retryDelayMs: 1200
+};
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function generateSubmissionId() {
+    if (window.crypto && window.crypto.getRandomValues) {
+        const bytes = new Uint8Array(16);
+        window.crypto.getRandomValues(bytes);
+        const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+        return `${hex}-${Date.now().toString(36)}`;
+    }
+    return `sub-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+async function fetchWithTimeout(url, options, timeoutMs) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+async function fetchWithRetry(url, options, config) {
+    let lastError;
+    for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
+        try {
+            const response = await fetchWithTimeout(url, options, config.timeoutMs);
+            if (response.ok) {
+                return response;
+            }
+            if (response.status >= 500 && attempt < config.maxRetries) {
+                await sleep(config.retryDelayMs * (attempt + 1));
+                continue;
+            }
+            return response;
+        } catch (error) {
+            lastError = error;
+            const isAbort = error && error.name === 'AbortError';
+            if (attempt >= config.maxRetries || (!isAbort && navigator.onLine === false)) {
+                throw error;
+            }
+            await sleep(config.retryDelayMs * (attempt + 1));
+        }
+    }
+    throw lastError;
+}
+
+function setFormBusy(submitBtn, isBusy) {
+    if (!submitBtn) return;
+    submitBtn.disabled = isBusy;
+    submitBtn.classList.toggle('is-loading', isBusy);
+    submitBtn.textContent = isBusy ? 'Enviando...' : 'Enviar';
+    if (registerForm) {
+        registerForm.setAttribute('aria-busy', isBusy ? 'true' : 'false');
+    }
+}
+
+function setFieldError(input, message) {
+    if (!input) return;
+    input.classList.add('field-error');
+    input.setAttribute('aria-invalid', 'true');
+    const group = input.closest('.form-group');
+    if (!group) return;
+    let error = group.querySelector('.field-error-message');
+    if (!error) {
+        error = document.createElement('small');
+        error.className = 'field-error-message';
+        group.appendChild(error);
+    }
+    if (message) {
+        error.textContent = message;
+    }
+}
+
+function clearFieldError(input) {
+    if (!input) return;
+    input.classList.remove('field-error');
+    input.removeAttribute('aria-invalid');
+    const group = input.closest('.form-group');
+    const error = group ? group.querySelector('.field-error-message') : null;
+    if (error) {
+        error.remove();
+    }
+}
+
+function clearAllFieldErrors() {
+    document.querySelectorAll('.field-error').forEach(el => clearFieldError(el));
+}
+
+function initFieldErrorHandling() {
+    document.querySelectorAll('.form-group input, .form-group textarea').forEach(input => {
+        input.addEventListener('input', () => clearFieldError(input));
+        input.addEventListener('change', () => clearFieldError(input));
+    });
+}
+
 // Function to show message
 function showMessage(message, type) {
+    if (!formMessage) return;
     formMessage.textContent = message;
     formMessage.className = `form-message show ${type}`;
 
@@ -272,6 +379,9 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
         }
 
         // Adicionar dados do formulário como JSON
+        if (!formData.submissionId) {
+            formData.submissionId = generateSubmissionId();
+        }
         const formDataJSON = JSON.stringify(formData);
         console.log('📤 Dados JSON (tamanho):', formDataJSON.length, 'bytes');
         formDataToSend.append('formData', formDataJSON);
@@ -317,12 +427,10 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
         // Enviar para o backend
         console.log('📤 Enviando para:', BACKEND_CONFIG.url);
         console.log('📤 Iniciando requisição HTTP POST...');
-
-        const response = await fetch(BACKEND_CONFIG.url, {
+        const response = await fetchWithRetry(BACKEND_CONFIG.url, {
             method: 'POST',
             body: formDataToSend
-        });
-
+        }, SUBMISSION_CONFIG);
         console.log('📥 Resposta recebida! Status:', response.status, response.statusText);
 
         if (!response.ok) {
@@ -330,7 +438,13 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
 
             let errorData;
             try {
-                errorData = await response.json();
+                const contentType = response.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    errorData = await response.json();
+                } else {
+                    const text = await response.text();
+                    errorData = { error: 'Erro do servidor', message: text };
+                }
                 console.error('❌ Detalhes do erro:', errorData);
             } catch (e) {
                 console.error('❌ Não foi possível ler o erro do servidor');
@@ -347,8 +461,7 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
 
             console.error('❌ Mensagem de erro para o usuário:', userMessage);
             showMessage(userMessage, 'error');
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Enviar';
+            setFormBusy(submitBtn, false);
             return;
         }
 
@@ -375,6 +488,18 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
         // Log de erro genérico sem expor detalhes sensíveis
         const errorMessage = error.message || 'Erro desconhecido';
 
+        if (error && error.name === 'AbortError') {
+            console.error('�?O Timeout de rede');
+            showMessage('Tempo de conexao esgotado. Tente novamente em alguns instantes.', 'error');
+            return;
+        }
+
+        if (!navigator.onLine) {
+            console.error('�?O Navegador sem conexao');
+            showMessage('Sem conexao com a internet. Verifique sua rede e tente novamente.', 'error');
+            return;
+        }
+
         // Detectar erro de CORS
         if (errorMessage.includes('Failed to fetch') || errorMessage.includes('CORS') || errorMessage.includes('NetworkError')) {
             console.error('❌ Erro de CORS/Rede detectado');
@@ -385,8 +510,7 @@ async function sendFormToBackend(formData, accountType, submitBtn) {
         }
     } finally {
         // Re-enable submit button
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Enviar';
+        setFormBusy(submitBtn, false);
     }
 }
 
@@ -468,15 +592,17 @@ function validateAge(birthDate) {
 
 // Validação de arquivo
 function validateFile(file, maxSizeMB = 10, allowedTypes = ['image/jpeg', 'image/png', 'application/pdf']) {
-    if (!file) return { valid: false, error: 'Arquivo não selecionado' };
+    if (!file) return { valid: false, error: 'Arquivo nǜo selecionado' };
 
     const maxSize = maxSizeMB * 1024 * 1024; // Converter para bytes
     if (file.size > maxSize) {
-        return { valid: false, error: `Arquivo muito grande. Máximo: ${maxSizeMB}MB` };
+        return { valid: false, error: Arquivo muito grande. Mǭximo: MB };
     }
 
-    if (!allowedTypes.includes(file.type)) {
-        return { valid: false, error: `Tipo de arquivo não permitido. Permitidos: ${allowedTypes.join(', ')}` };
+    const hasPfxExtension = file.name && file.name.toLowerCase().endsWith('.pfx');
+    const allowPfxByExtension = hasPfxExtension && allowedTypes.some(type => type.includes('pkcs12') || type.includes('octet-stream'));
+    if (!allowedTypes.includes(file.type) && !allowPfxByExtension) {
+        return { valid: false, error: Tipo de arquivo nǜo permitido. Permitidos:  };
     }
 
     return { valid: true };
@@ -1160,7 +1286,7 @@ fileInputs.forEach(input => {
         if (file) {
             let allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
             if (input.id === 'ecnpjCertificate') {
-                allowedTypes = ['.pfx'];
+                allowedTypes = ['application/x-pkcs12', 'application/octet-stream'];
             }
 
             // Validação de tamanho máximo (10MB para upload)
@@ -1203,6 +1329,7 @@ console.log('🔵 registerForm:', registerForm);
 console.log('🔵 registerForm ID:', registerForm?.id);
 
 if (registerForm) {
+    initFieldErrorHandling();
     console.log('✅ Formulário encontrado! ID:', registerForm.id);
     console.log('✅ Adicionando listener de submit ao formulário...');
 
@@ -1380,8 +1507,7 @@ if (registerForm) {
         showMessage('Enviando formulário...', 'loading');
 
         // Disable submit button
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Enviando...';
+        setFormBusy(submitBtn, true);
         console.log('🟢 Botão desabilitado, iniciando coleta de dados...');
 
         try {
@@ -1522,13 +1648,11 @@ if (registerForm) {
             showMessage(`Erro ao processar formulário: ${error.message || 'Erro desconhecido'}. Por favor, verifique o console do navegador (F12) para mais detalhes.`, 'error');
 
             // Re-enable submit button
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Enviar';
+            setFormBusy(submitBtn, false);
         } finally {
             // Re-enable submit button (caso não tenha sido feito no catch)
             if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Enviar';
+                setFormBusy(submitBtn, false);
             }
         }
     });
@@ -1801,4 +1925,6 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+
 

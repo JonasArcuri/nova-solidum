@@ -379,6 +379,28 @@ function validateAndSanitizeFormData(formData, accountType) {
 
 // Armazenamento temporário de tokens (em produção, use Redis ou banco de dados)
 const registrationTokens = new Map();
+const recentSubmissions = new Map();
+const SUBMISSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+function getSubmissionRecord(submissionId) {
+    if (!submissionId) return null;
+    const record = recentSubmissions.get(submissionId);
+    if (!record) return null;
+    if (Date.now() - record.createdAt > SUBMISSION_TTL_MS) {
+        recentSubmissions.delete(submissionId);
+        return null;
+    }
+    return record;
+}
+
+function rememberSubmission(submissionId, messageId, attachmentsCount) {
+    if (!submissionId) return;
+    recentSubmissions.set(submissionId, {
+        messageId,
+        attachmentsCount,
+        createdAt: Date.now()
+    });
+}
 
 // Middleware para verificar token de autenticação
 function verifyToken(req, res, next) {
@@ -427,19 +449,24 @@ const uploadMultiple = multer({
             'image/jpg',
             'application/pdf'
         ];
+        const isPfxField = file.fieldname === 'ecnpjCertificate';
+        const isPfxMime = file.mimetype === 'application/x-pkcs12' || file.mimetype === 'application/octet-stream';
 
-        if (allowedMimeTypes.includes(file.mimetype)) {
+        if (allowedMimeTypes.includes(file.mimetype) || (isPfxField && isPfxMime)) {
             cb(null, true);
         } else {
-            cb(new Error(`Tipo de arquivo não permitido: ${file.mimetype}. Permitidos: JPG, PNG, PDF`));
+            cb(new Error(`Tipo de arquivo nao permitido: ${file.mimetype}. Permitidos: JPG, PNG, PDF, PFX`));
         }
     }
 });
 
 // Função para validar magic bytes (assinatura de arquivo)
-function validateFileMagicBytes(buffer, mimetype) {
+function validateFileMagicBytes(buffer, mimetype, fieldName) {
     if (!buffer || buffer.length < 4) return false;
-
+    
+    if (fieldName === 'ecnpjCertificate' && (mimetype === 'application/x-pkcs12' || mimetype === 'application/octet-stream')) {
+        return true;
+    }
     const magicNumbers = {
         'image/jpeg': [[0xFF, 0xD8, 0xFF]],
         'image/jpg': [[0xFF, 0xD8, 0xFF]],
@@ -694,6 +721,19 @@ app.post('/api/register/documents', verifyToken, uploadMultiple.fields([
         const formData = tokenData.formData;
         const accountType = tokenData.accountType;
 
+        const requiredDocs = accountType === 'PF'
+            ? ['documentFront', 'documentBack']
+            : ['adminIdFront', 'adminIdBack'];
+
+        const missingDocs = requiredDocs.filter(fieldId => !req.files || !req.files[fieldId] || req.files[fieldId].length === 0);
+        if (missingDocs.length > 0) {
+            return res.status(400).json({
+                error: 'Documentos obrigatorios',
+                message: 'Por favor, anexe todos os documentos obrigatorios',
+                field: missingDocs[0],
+                fields: missingDocs
+            });
+        }
         // Preparar anexos
         const attachments = [];
         const fileFields = accountType === 'PF'
@@ -704,7 +744,7 @@ app.post('/api/register/documents', verifyToken, uploadMultiple.fields([
             const file = req.files && req.files[fieldId] ? req.files[fieldId][0] : null;
             if (file) {
                 // Validar magic bytes do arquivo para segurança extra
-                if (!validateFileMagicBytes(file.buffer, file.mimetype)) {
+                if (!validateFileMagicBytes(file.buffer, file.mimetype, fieldId)) {
                     safeLogger('warn', 'Arquivo com magic bytes inválido rejeitado', {
                         fieldId,
                         mimetype: file.mimetype,
@@ -819,8 +859,8 @@ app.post('/api/email/send', emailRateLimiter, uploadMultiple.fields([
 
         const accountType = formData.accountType || 'PF';
 
-        // 🔍 DEBUG: Log detalhado dos dados recebidos para verificar CEP
-        safeLogger('log', '📋 Dados do formulário recebidos:', {
+        // DEBUG: Log detalhado dos dados recebidos para verificar CEP
+        safeLogger('log', 'DEBUG Dados do formulario recebidos:', {
             accountType: formData.accountType,
             hasAddress: !!formData.address,
             address: formData.address,
@@ -828,6 +868,18 @@ app.post('/api/email/send', emailRateLimiter, uploadMultiple.fields([
             directPjCep: formData.pjCep,
             isForeigner: formData.isForeigner
         });
+
+        const submissionId = formData.submissionId;
+        const existingSubmission = getSubmissionRecord(submissionId);
+        if (existingSubmission) {
+            return res.json({
+                success: true,
+                message: 'Envio ja recebido anteriormente.',
+                duplicate: true,
+                attachmentsCount: existingSubmission.attachmentsCount || 0,
+                emailId: existingSubmission.messageId
+            });
+        }
 
         // Verificar honeypot (anti-bot)
         if (req.body.honeypot && req.body.honeypot.length > 0) {
@@ -851,6 +903,27 @@ app.post('/api/email/send', emailRateLimiter, uploadMultiple.fields([
         // Usar dados sanitizados
         formData = validation.sanitizedData;
 
+        // DEBUG: Log detalhado dos dados recebidos para verificar CEP
+        safeLogger('log', 'DEBUG Dados do formulario recebidos:', {
+            accountType: formData.accountType,
+            hasAddress: !!formData.address,
+            address: formData.address,
+            directCep: formData.cep,
+            directPjCep: formData.pjCep,
+            isForeigner: formData.isForeigner
+        });
+
+        const submissionId = formData.submissionId;
+        const existingSubmission = getSubmissionRecord(submissionId);
+        if (existingSubmission) {
+            return res.json({
+                success: true,
+                message: 'Envio ja recebido anteriormente.',
+                duplicate: true,
+                attachmentsCount: existingSubmission.attachmentsCount || 0,
+                emailId: existingSubmission.messageId
+            });
+        }
         // Preparar anexos
         const attachments = [];
         const fileFields = accountType === 'PF'
@@ -861,7 +934,7 @@ app.post('/api/email/send', emailRateLimiter, uploadMultiple.fields([
             const file = req.files && req.files[fieldId] ? req.files[fieldId][0] : null;
             if (file) {
                 // Validar magic bytes do arquivo para segurança extra
-                if (!validateFileMagicBytes(file.buffer, file.mimetype)) {
+                if (!validateFileMagicBytes(file.buffer, file.mimetype, fieldId)) {
                     safeLogger('warn', 'Arquivo com magic bytes inválido rejeitado', {
                         fieldId,
                         mimetype: file.mimetype,
@@ -926,6 +999,27 @@ app.post('/api/email/send', emailRateLimiter, uploadMultiple.fields([
 
         await transporter.sendMail(userMailOptions);
 
+        // DEBUG: Log detalhado dos dados recebidos para verificar CEP
+        safeLogger('log', 'DEBUG Dados do formulario recebidos:', {
+            accountType: formData.accountType,
+            hasAddress: !!formData.address,
+            address: formData.address,
+            directCep: formData.cep,
+            directPjCep: formData.pjCep,
+            isForeigner: formData.isForeigner
+        });
+
+        const submissionId = formData.submissionId;
+        const existingSubmission = getSubmissionRecord(submissionId);
+        if (existingSubmission) {
+            return res.json({
+                success: true,
+                message: 'Envio ja recebido anteriormente.',
+                duplicate: true,
+                attachmentsCount: existingSubmission.attachmentsCount || 0,
+                emailId: existingSubmission.messageId
+            });
+        }
         // Log de sucesso com contexto
         safeLogger('log', 'Email enviado com sucesso', {
             accountType,
@@ -938,7 +1032,8 @@ app.post('/api/email/send', emailRateLimiter, uploadMultiple.fields([
             success: true,
             message: 'Emails enviados com sucesso!',
             attachmentsCount: attachments.length,
-            emailId: emailResult.messageId
+            emailId: emailResult.messageId,
+            submissionId: submissionId
         });
 
     } catch (error) {
@@ -1225,6 +1320,24 @@ app.post('/api/tinify/compress', upload.single('image'), async (req, res) => {
     }
 });
 
+// Tratamento de erros do Multer (uploads)
+app.use((err, req, res, next) => {
+    if (err instanceof multer.MulterError) {
+        return res.status(400).json({
+            error: 'Erro no upload de arquivos',
+            message: err.message
+        });
+    }
+
+    if (err) {
+        return res.status(400).json({
+            error: 'Arquivo invǡlido',
+            message: err.message || 'Falha ao processar arquivos'
+        });
+    }
+
+    next();
+});
 // Exportar app para Vercel (serverless)
 module.exports = app;
 
@@ -1245,4 +1358,19 @@ if (process.env.VERCEL !== '1' && !process.env.VERCEL_ENV) {
         }
     });
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
