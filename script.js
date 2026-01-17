@@ -1674,6 +1674,98 @@ if (registerForm) {
     }, 1000);
 }
 
+// Crypto Price API Integration (CoinGecko)
+const coinMapping = {
+    'bitcoin': { coingecko: 'bitcoin' },
+    'ethereum': { coingecko: 'ethereum' },
+    'solana': { coingecko: 'solana' },
+    'binancecoin': { coingecko: 'binancecoin' },
+    'tether': { coingecko: 'tether' },
+    'usd-coin': { coingecko: 'usd-coin' }
+};
+
+function updateCryptoItem(item, price, change) {
+    const priceElement = item.querySelector('.price-amount');
+    const changeElement = item.querySelector('.change-percent');
+
+    if (priceElement && price !== null) {
+        if (price > 1) {
+            priceElement.textContent = `$${price.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            })}`;
+        } else {
+            priceElement.textContent = `$${price.toLocaleString('en-US', {
+                minimumFractionDigits: 4,
+                maximumFractionDigits: 6
+            })}`;
+        }
+    }
+
+    if (changeElement && change !== null) {
+        const changeValue = parseFloat(change);
+        const sign = changeValue >= 0 ? '+' : '';
+        changeElement.textContent = `${sign}${changeValue.toFixed(2)}%`;
+
+        changeElement.classList.remove('positive', 'negative', 'neutral');
+        if (changeValue > 0) {
+            changeElement.classList.add('positive');
+        } else if (changeValue < 0) {
+            changeElement.classList.add('negative');
+        } else {
+            changeElement.classList.add('neutral');
+        }
+    }
+}
+
+async function fetchCryptoPricesFromCoinGecko() {
+    const cryptoItems = document.querySelectorAll('.crypto-item[data-coin-id]');
+    if (cryptoItems.length === 0) return false;
+
+    const coinIds = Array.from(cryptoItems)
+        .map(item => item.getAttribute('data-coin-id'))
+        .filter((value, index, self) => self.indexOf(value) === index)
+        .map(coinId => coinMapping[coinId]?.coingecko)
+        .filter(Boolean);
+
+    if (coinIds.length === 0) return false;
+
+    try {
+        const apiUrl = `https://api.coingecko.com/api/v3/simple/price?ids=${coinIds.join(',')}&vs_currencies=usd&include_24hr_change=true`;
+        const response = await fetch(apiUrl);
+        if (!response.ok) return false;
+
+        const data = await response.json();
+        if (!data || Object.keys(data).length === 0) return false;
+
+        cryptoItems.forEach(item => {
+            const coinId = item.getAttribute('data-coin-id');
+            const apiId = coinMapping[coinId]?.coingecko;
+            const coinData = apiId ? data[apiId] : null;
+            if (coinData && coinData.usd !== undefined) {
+                updateCryptoItem(item, coinData.usd, coinData.usd_24h_change);
+            }
+        });
+
+        return true;
+    } catch (error) {
+        return false;
+    }
+}
+
+function initCryptoPrices() {
+    setTimeout(() => {
+        fetchCryptoPricesFromCoinGecko();
+    }, 500);
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCryptoPrices);
+} else {
+    initCryptoPrices();
+}
+
+setInterval(fetchCryptoPricesFromCoinGecko, 60000);
 // Add CSS for fade-in animation
 const style = document.createElement('style');
 style.textContent = `

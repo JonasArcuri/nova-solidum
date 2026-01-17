@@ -69,27 +69,144 @@
             <p class="hero-subtitle">Somos a ponte entre o real e o digital. Transformando ativos digitais em soluções
                 reais para o seu dia a dia.</p>
 
-            <!-- TradingView Ticker Tape (Quotes) -->
+            <!-- Crypto Carousel -->
             <div class="crypto-carousel-container">
-                <div class="tradingview-widget-container">
-                    <div class="tradingview-widget-container__widget"></div>
-                    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
-                    {
-                      "symbols": [
-                        { "proName": "BINANCE:BTCUSDT", "title": "Bitcoin" },
-                        { "proName": "BINANCE:ETHUSDT", "title": "Ethereum" },
-                        { "proName": "BINANCE:SOLUSDT", "title": "Solana" },
-                        { "proName": "BINANCE:BNBUSDT", "title": "BNB" },
-                        { "proName": "COINBASE:USDTUSD", "title": "USDT" },
-                        { "proName": "COINBASE:USDCUSD", "title": "USDC" }
-                      ],
-                      "showSymbolLogo": true,
-                      "colorTheme": "light",
-                      "isTransparent": true,
-                      "displayMode": "adaptive",
-                      "locale": "pt"
-                    }
-                    </script>
+                <div class="crypto-carousel">
+                    <div class="crypto-carousel-track">
+                        <div class="crypto-item" data-coin-id="bitcoin" data-symbol="BTC">
+                            <div class="crypto-icon">₿</div>
+                            <span class="crypto-name">Bitcoin</span>
+                            <span class="crypto-symbol">BTC</span>
+                            <div class="crypto-price">
+                                <span class="price-amount">--</span>
+                            </div>
+                            <div class="crypto-change">
+                                <span class="change-percent">--</span>
+                            </div>
+                        </div>
+                        <div class="crypto-item" data-coin-id="ethereum" data-symbol="ETH">
+                            <div class="crypto-icon"><img src="assets/Etherum-logo.png" alt="Ethereum"></div>
+                            <span class="crypto-name">Ethereum</span>
+                            <span class="crypto-symbol">ETH</span>
+                            <div class="crypto-price">
+                                <span class="price-amount">--</span>
+                            </div>
+                            <div class="crypto-change">
+                                <span class="change-percent">--</span>
+                            </div>
+                        </div>
+                        <div class="crypto-item" data-coin-id="solana" data-symbol="SOL">
+                            <div class="crypto-icon"><img src="assets/Solana-coin.png" alt="Solana"></div>
+                            <span class="crypto-name">Solana</span>
+                            <span class="crypto-symbol">SOL</span>
+                            <div class="crypto-price">
+                                <span class="price-amount">--</span>
+                            </div>
+                            <div class="crypto-change">
+                                <span class="change-percent">--</span>
+                            </div>
+                        </div>
+                        <div class="crypto-item" data-coin-id="binancecoin" data-symbol="BNB">
+                            <div class="crypto-icon"><img src="assets/Bnb-coin.png" alt="BNB"></div>
+                            <span class="crypto-name">BNB</span>
+                            <span class="crypto-symbol">BNB</span>
+                            <div class="crypto-price">
+                                <span class="price-amount">--</span>
+                            </div>
+                            <div class="crypto-change">
+                                <span class="change-percent">--</span>
+                            </div>
+                        </div>
+                        <div class="crypto-item" data-coin-id="tether" data-symbol="USDT">
+                            <div class="crypto-icon"><img src="assets/Thether-coin.png" alt="Tether"></div>
+                            <span class="crypto-name">Tether</span>
+                            <span class="crypto-symbol">USDT</span>
+                            <div class="crypto-price">
+                                <span class="price-amount">--</span>
+                            </div>
+                            <div class="crypto-change">
+                                <span class="change-percent">--</span>
+                            </div>
+                        </div>
+                        <div class="crypto-item" data-coin-id="usd-coin" data-symbol="USDC">
+                            <div class="crypto-icon"><img src="assets/Usd-Coin.png" alt="USDC"></div>
+                            <span class="crypto-name">USD Coin</span>
+                            <span class="crypto-symbol">USDC</span>
+                            <div class="crypto-price">
+                                <span class="price-amount">--</span>
+                            </div>
+                            <div class="crypto-change">
+                                <span class="change-percent">--</span>
+                            </div>
+                        </div>
+                        <!-- Duplicate items for seamless loop -->
+                        <div class="crypto-item" data-coin-id="bitcoin" data-symbol="BTC">
+                            <div class="crypto-icon">₿</div>
+                            <span class="crypto-name">Bitcoin</span>
+                            <span class="crypto-symbol">BTC</span>
+                            <div class="crypto-price">
+                                <span class="price-amount">--</span>
+                            </div>
+                            <div class="crypto-change">
+                                <span class="change-percent">--</span>
+                            </div>
+                        </div>
+                        <div class="crypto-item" data-coin-id="ethereum" data-symbol="ETH">
+                            <div class="crypto-icon"><img src="assets/Etherum-logo.png" alt="Ethereum"></div>
+                            <span class="crypto-name">Ethereum</span>
+                            <span class="crypto-symbol">ETH</span>
+                            <div class="crypto-price">
+                                <span class="price-amount">--</span>
+                            </div>
+                            <div class="crypto-change">
+                                <span class="change-percent">--</span>
+                            </div>
+                        </div>
+                        <div class="crypto-item" data-coin-id="solana" data-symbol="SOL">
+                            <div class="crypto-icon"><img src="assets/Solana-coin.png" alt="Solana"></div>
+                            <span class="crypto-name">Solana</span>
+                            <span class="crypto-symbol">SOL</span>
+                            <div class="crypto-price">
+                                <span class="price-amount">--</span>
+                            </div>
+                            <div class="crypto-change">
+                                <span class="change-percent">--</span>
+                            </div>
+                        </div>
+                        <div class="crypto-item" data-coin-id="binancecoin" data-symbol="BNB">
+                            <div class="crypto-icon"><img src="assets/Bnb-coin.png" alt="BNB"></div>
+                            <span class="crypto-name">BNB</span>
+                            <span class="crypto-symbol">BNB</span>
+                            <div class="crypto-price">
+                                <span class="price-amount">--</span>
+                            </div>
+                            <div class="crypto-change">
+                                <span class="change-percent">--</span>
+                            </div>
+                        </div>
+                        <div class="crypto-item" data-coin-id="tether" data-symbol="USDT">
+                            <div class="crypto-icon"><img src="assets/Thether-coin.png" alt="Tether"></div>
+                            <span class="crypto-name">Tether</span>
+                            <span class="crypto-symbol">USDT</span>
+                            <div class="crypto-price">
+                                <span class="price-amount">--</span>
+                            </div>
+                            <div class="crypto-change">
+                                <span class="change-percent">--</span>
+                            </div>
+                        </div>
+                        <div class="crypto-item" data-coin-id="usd-coin" data-symbol="USDC">
+                            <div class="crypto-icon">$</div>
+                            <span class="crypto-name">USD Coin</span>
+                            <span class="crypto-symbol">USDC</span>
+                            <div class="crypto-price">
+                                <span class="price-amount">--</span>
+                            </div>
+                            <div class="crypto-change">
+                                <span class="change-percent">--</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
