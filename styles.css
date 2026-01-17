@@ -2071,6 +2071,10 @@ body {
 
 /* Responsive Design - Mobile */
 @media (max-width: 768px) {
+    .nav {
+        padding: var(--spacing-xs) 0;
+    }
+
     .nav-menu {
         display: none;
         position: absolute;
@@ -2110,6 +2114,7 @@ body {
     }
     
     .hero {
+        margin-top: 120px;
         min-height: 70vh;
         padding: var(--spacing-lg) 0;
     }
@@ -2391,7 +2396,7 @@ body {
     .hero {
         min-height: 60vh;
         padding: var(--spacing-md) 0;
-        margin-top: 70px;
+        margin-top: 130px;
     }
     
     .hero-title {
