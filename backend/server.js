@@ -5,6 +5,8 @@ const cors = require('cors');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -401,6 +403,27 @@ function rememberSubmission(submissionId, messageId, attachmentsCount) {
         createdAt: Date.now()
     });
 }
+function persistRegistration(formData, accountType, submissionId, attachments) {
+    try {
+        const dataDir = path.join(__dirname, 'data');
+        if (!fs.existsSync(dataDir)) {
+            fs.mkdirSync(dataDir, { recursive: true });
+        }
+
+        const record = {
+            receivedAt: new Date().toISOString(),
+            accountType,
+            submissionId: submissionId || null,
+            attachments: attachments || [],
+            formData
+        };
+
+        const filePath = path.join(dataDir, 'registrations.jsonl');
+        fs.appendFileSync(filePath, `${JSON.stringify(record)}\n`, { encoding: 'utf8' });
+    } catch (error) {
+        safeLogger('warn', 'Falha ao salvar registro local', error);
+    }
+}
 
 // Middleware para verificar token de autenticação
 function verifyToken(req, res, next) {
@@ -762,6 +785,9 @@ app.post('/api/register/documents', verifyToken, uploadMultiple.fields([
             }
         });
 
+        const attachmentNames = attachments.map(att => att.filename);
+        persistRegistration(formData, accountType, submissionId, attachmentNames);
+
         // Preparar dados do email para a empresa
         const companyEmail = process.env.COMPANY_EMAIL || 'novasolidum@gmail.com';
         const userEmail = accountType === 'PF' ? formData.email : formData.companyEmail;
@@ -857,29 +883,7 @@ app.post('/api/email/send', emailRateLimiter, uploadMultiple.fields([
             });
         }
 
-        const accountType = formData.accountType || 'PF';
-
-        // DEBUG: Log detalhado dos dados recebidos para verificar CEP
-        safeLogger('log', 'DEBUG Dados do formulario recebidos:', {
-            accountType: formData.accountType,
-            hasAddress: !!formData.address,
-            address: formData.address,
-            directCep: formData.cep,
-            directPjCep: formData.pjCep,
-            isForeigner: formData.isForeigner
-        });
-
-        const submissionId = formData.submissionId;
-        const existingSubmission = getSubmissionRecord(submissionId);
-        if (existingSubmission) {
-            return res.json({
-                success: true,
-                message: 'Envio ja recebido anteriormente.',
-                duplicate: true,
-                attachmentsCount: existingSubmission.attachmentsCount || 0,
-                emailId: existingSubmission.messageId
-            });
-        }
+        const accountType = formData.accountType || 'PF';\n\n        }
 
         // Verificar honeypot (anti-bot)
         if (req.body.honeypot && req.body.honeypot.length > 0) {
@@ -903,16 +907,6 @@ app.post('/api/email/send', emailRateLimiter, uploadMultiple.fields([
         // Usar dados sanitizados
         formData = validation.sanitizedData;
 
-        // DEBUG: Log detalhado dos dados recebidos para verificar CEP
-        safeLogger('log', 'DEBUG Dados do formulario recebidos:', {
-            accountType: formData.accountType,
-            hasAddress: !!formData.address,
-            address: formData.address,
-            directCep: formData.cep,
-            directPjCep: formData.pjCep,
-            isForeigner: formData.isForeigner
-        });
-
         const submissionId = formData.submissionId;
         const existingSubmission = getSubmissionRecord(submissionId);
         if (existingSubmission) {
@@ -924,6 +918,21 @@ app.post('/api/email/send', emailRateLimiter, uploadMultiple.fields([
                 emailId: existingSubmission.messageId
             });
         }
+
+        const requiredDocs = accountType === 'PF'
+            ? ['documentFront', 'documentBack']
+            : ['adminIdFront', 'adminIdBack'];
+
+        const missingDocs = requiredDocs.filter(fieldId => !req.files || !req.files[fieldId] || req.files[fieldId].length === 0);
+        if (missingDocs.length > 0) {
+            return res.status(400).json({
+                error: 'Documentos obrigatorios',
+                message: 'Por favor, anexe todos os documentos obrigatorios',
+                field: missingDocs[0],
+                fields: missingDocs
+            });
+        }
+
         // Preparar anexos
         const attachments = [];
         const fileFields = accountType === 'PF'
@@ -933,14 +942,14 @@ app.post('/api/email/send', emailRateLimiter, uploadMultiple.fields([
         fileFields.forEach(fieldId => {
             const file = req.files && req.files[fieldId] ? req.files[fieldId][0] : null;
             if (file) {
-                // Validar magic bytes do arquivo para segurança extra
+                // Validar magic bytes do arquivo para seguranca extra
                 if (!validateFileMagicBytes(file.buffer, file.mimetype, fieldId)) {
-                    safeLogger('warn', 'Arquivo com magic bytes inválido rejeitado', {
+                    safeLogger('warn', 'Arquivo com magic bytes invalido rejeitado', {
                         fieldId,
                         mimetype: file.mimetype,
                         size: file.size
                     });
-                    // Não adiciona arquivo suspeito
+                    // Nao adiciona arquivo suspeito
                     return;
                 }
 
@@ -951,6 +960,9 @@ app.post('/api/email/send', emailRateLimiter, uploadMultiple.fields([
                 });
             }
         });
+
+        const attachmentNames = attachments.map(att => att.filename);
+        persistRegistration(formData, accountType, submissionId, attachmentNames);
 
         // Preparar dados do email para a empresa
         const companyEmail = process.env.COMPANY_EMAIL || 'novasolidum@gmail.com';
@@ -997,29 +1009,7 @@ app.post('/api/email/send', emailRateLimiter, uploadMultiple.fields([
             html: userConfirmationHtml
         };
 
-        await transporter.sendMail(userMailOptions);
-
-        // DEBUG: Log detalhado dos dados recebidos para verificar CEP
-        safeLogger('log', 'DEBUG Dados do formulario recebidos:', {
-            accountType: formData.accountType,
-            hasAddress: !!formData.address,
-            address: formData.address,
-            directCep: formData.cep,
-            directPjCep: formData.pjCep,
-            isForeigner: formData.isForeigner
-        });
-
-        const submissionId = formData.submissionId;
-        const existingSubmission = getSubmissionRecord(submissionId);
-        if (existingSubmission) {
-            return res.json({
-                success: true,
-                message: 'Envio ja recebido anteriormente.',
-                duplicate: true,
-                attachmentsCount: existingSubmission.attachmentsCount || 0,
-                emailId: existingSubmission.messageId
-            });
-        }
+        await transporter.sendMail(userMailOptions);\n\n        }
         // Log de sucesso com contexto
         safeLogger('log', 'Email enviado com sucesso', {
             accountType,

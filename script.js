@@ -595,23 +595,21 @@ function validateAge(birthDate) {
 
 // Validação de arquivo
 function validateFile(file, maxSizeMB = 10, allowedTypes = ['image/jpeg', 'image/png', 'application/pdf']) {
-    if (!file) return { valid: false, error: 'Arquivo nǜo selecionado' };
+    if (!file) return { valid: false, error: 'Arquivo nao selecionado' };
 
     const maxSize = maxSizeMB * 1024 * 1024; // Converter para bytes
     if (file.size > maxSize) {
-        return { valid: false, error: Arquivo muito grande. Mǭximo: MB };
+        return { valid: false, error: `Arquivo muito grande. Maximo: ${maxSizeMB}MB` };
     }
 
     const hasPfxExtension = file.name && file.name.toLowerCase().endsWith('.pfx');
     const allowPfxByExtension = hasPfxExtension && allowedTypes.some(type => type.includes('pkcs12') || type.includes('octet-stream'));
     if (!allowedTypes.includes(file.type) && !allowPfxByExtension) {
-        return { valid: false, error: Tipo de arquivo nǜo permitido. Permitidos:  };
+        return { valid: false, error: `Tipo de arquivo nao permitido. Permitidos: ${allowedTypes.join(', ')}` };
     }
 
     return { valid: true };
 }
-
-// Validação de arquivo para upload (máximo 10MB)
 function validateFileForEmail(file, maxSizeKB = 10, allowedTypes = ['image/jpeg', 'image/png', 'application/pdf']) {
     if (!file) return { valid: false, error: 'Arquivo não selecionado' };
 

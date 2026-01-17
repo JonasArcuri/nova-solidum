@@ -13,7 +13,6 @@
         img-src 'self' data: https: blob:;
         connect-src 'self' https://back-end-nova.vercel.app https://api.coingecko.com https://api.binance.com https://viacep.com.br https://*.tradingview.com wss://*.tradingview.com wss://stream.binance.com:9443;
         frame-src https://*.tradingview.com;
-        frame-ancestors 'none';
         worker-src 'self' blob:;
         child-src https://*.tradingview.com blob:;
         object-src 'none';
@@ -22,7 +21,6 @@
         upgrade-insecure-requests;
     ">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <meta http-equiv="X-Frame-Options" content="DENY">
     <meta http-equiv="X-XSS-Protection" content="1; mode=block">
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
     <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=(), payment=()">
@@ -1031,10 +1029,13 @@
 
             const widget = new TradingView.widget(widgetConfig);
 
-            // Manter status como conectado (sem monitoramento de erros)
-            widget.onChartReady(function () {
+            if (widget && typeof widget.onChartReady === 'function') {
+                widget.onChartReady(function () {
+                    ChartStatus.setConnected();
+                });
+            } else {
                 ChartStatus.setConnected();
-            });
+            }
         }
 
         // Carregar script do TradingView
