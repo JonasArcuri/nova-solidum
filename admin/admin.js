@@ -9,7 +9,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
 const BACKEND_BASE = window.location.hostname.includes('localhost')
     ? 'http://localhost:3000'
-    : 'https://back-end-nova.vercel.app';
+    : 'https://back-end-nova-two.vercel.app';
 
 const views = {
     login: document.getElementById('view-login'),

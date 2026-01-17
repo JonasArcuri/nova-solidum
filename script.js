@@ -236,7 +236,7 @@ document.addEventListener('keydown', (e) => {
 
 // Configuração segura do backend - URLs construídas dinamicamente para evitar exposição direta
 const BACKEND_CONFIG = (() => {
-    const _p = ['back-end-nova', 'vercel', 'app'];
+    const _p = ['back-end-nova-two', 'vercel', 'app'];
     const _e = '/api/registrations/create';
     const _t = '/api/tinify/compress';
     return {
